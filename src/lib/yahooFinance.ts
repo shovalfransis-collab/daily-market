@@ -1,7 +1,5 @@
 import { StockQuote, PricePoint, SectorData, EarningsReport } from '../types';
 
-const YF1 = 'https://query1.finance.yahoo.com';
-const YF2 = 'https://query2.finance.yahoo.com';
 
 const SECTOR_MAP: Record<string, string> = {
   XLK: 'Technology', XLF: 'Financials', XLE: 'Energy', XLV: 'Health Care',
@@ -24,17 +22,16 @@ export const INDICES = ['^GSPC', '^IXIC', '^DJI', '^RUT', '^VIX', '^TNX'];
 export const SECTOR_ETFS = ['XLK','XLF','XLE','XLV','XLY','XLP','XLI','XLB','XLU','XLRE','XLC'];
 export const COMMODITIES = ['GLD','SLV','USO','UNG','COPX','XME','WEAT','CORN','SOYB','WOOD','LIT'];
 
-async function yfGet(url: string): Promise<any> {
-  const res = await fetch(url, {
-    headers: { 'Accept': 'application/json' },
-  });
+async function yfGet(path: string, host: '1' | '2' = '1', params: Record<string, string> = {}): Promise<any> {
+  const qs = new URLSearchParams({ ...params, _host: host, _path: path });
+  const res = await fetch(`/api/yf?${qs}`, { headers: { Accept: 'application/json' } });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
 
 async function fetchChart(symbol: string, range = '1d'): Promise<any> {
   const enc = encodeURIComponent(symbol);
-  return yfGet(`${YF1}/v8/finance/chart/${enc}?range=${range}&interval=1d`);
+  return yfGet(`/v8/finance/chart/${enc}`, '1', { range, interval: '1d' });
 }
 
 function parseChartQuote(sym: string, data: any): StockQuote | null {
@@ -95,7 +92,8 @@ export async function fetchTopMovers(): Promise<{ gainers: StockQuote[]; losers:
   const fetchScreener = async (scrId: string): Promise<StockQuote[]> => {
     try {
       const data = await yfGet(
-        `${YF1}/v1/finance/screener/predefined/saved?scrIds=${scrId}&count=20&formatted=false`
+        '/v1/finance/screener/predefined/saved', '1',
+        { scrIds: scrId, count: '20', formatted: 'false' }
       );
       const quotes: any[] = data?.finance?.result?.[0]?.quotes ?? [];
       return quotes.map((q: any) => ({
@@ -123,7 +121,7 @@ export async function fetchTopMovers(): Promise<{ gainers: StockQuote[]; losers:
 export async function fetchEarningsToday(): Promise<EarningsReport[]> {
   try {
     const today = new Date().toISOString().split('T')[0];
-    const data = await yfGet(`${YF2}/v1/finance/earning_releases?date=${today}&size=20`);
+    const data = await yfGet('/v1/finance/earning_releases', '2', { date: today, size: '20' });
     const items: any[] = data?.finance?.result?.[0]?.earningRelease ?? [];
     return items.slice(0, 15).map((e: any) => {
       const epsActual = e.epsActual?.raw;
