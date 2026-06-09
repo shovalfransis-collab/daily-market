@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, TrendingUp } from 'lucide-react';
 import { fetchNewsletter } from './lib/api';
 import { MarketSummary } from './types';
 import { NewsletterSummaryCard } from './components/NewsletterSummary';
@@ -8,12 +8,18 @@ import { TopMovers } from './components/TopMovers';
 import { SectorHeatmap } from './components/SectorHeatmap';
 import { CommoditiesPanel } from './components/CommoditiesPanel';
 import { EarningsTable } from './components/EarningsTable';
+import { YoungRicherCalculator } from './components/YoungRicherCalculator';
 
 export default function App() {
   const [data, setData] = useState<MarketSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showCalculator, setShowCalculator] = useState(false);
+
+  if (showCalculator) {
+    return <YoungRicherCalculator onBack={() => setShowCalculator(false)} />;
+  }
 
   const load = useCallback(async (bust = false) => {
     try {
@@ -51,6 +57,13 @@ export default function App() {
           <div>
             <h1 className="text-2xl font-medium text-slate-100 tracking-tight">Market Daily</h1>
             <p className="text-sm text-muted-foreground mt-0.5">{dateStr}</p>
+            <button
+              onClick={() => setShowCalculator(true)}
+              className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-up/10 border border-up/20 text-xs font-medium text-up hover:bg-up/20 transition-colors"
+            >
+              <TrendingUp size={12} />
+              The Younger The Richer Calculator
+            </button>
           </div>
           <button
             onClick={handleRefresh}
