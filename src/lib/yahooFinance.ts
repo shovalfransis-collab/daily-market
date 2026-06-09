@@ -34,6 +34,11 @@ async function fetchChart(symbol: string, range = '1d'): Promise<any> {
   return yfGet(`/v8/finance/chart/${enc}`, '1', { range, interval: '1d' });
 }
 
+export async function fetchChartRange(symbol: string, range: string, interval: string): Promise<any> {
+  const enc = encodeURIComponent(symbol);
+  return yfGet(`/v8/finance/chart/${enc}`, '1', { range, interval });
+}
+
 function parseChartQuote(sym: string, data: any): StockQuote | null {
   const result = data?.chart?.result?.[0];
   if (!result) return null;

@@ -9,6 +9,7 @@ import { SectorHeatmap } from './components/SectorHeatmap';
 import { CommoditiesPanel } from './components/CommoditiesPanel';
 import { EarningsTable } from './components/EarningsTable';
 import { YoungRicherCalculator } from './components/YoungRicherCalculator';
+import { StockDetailPage } from './components/StockDetailPage';
 
 export default function App() {
   const [data, setData] = useState<MarketSummary | null>(null);
@@ -16,6 +17,7 @@ export default function App() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCalculator, setShowCalculator] = useState(false);
+  const [selectedStock, setSelectedStock] = useState<{ symbol: string; name: string } | null>(null);
 
   const load = useCallback(async (bust = false) => {
     try {
@@ -48,6 +50,18 @@ export default function App() {
   if (showCalculator) {
     return <YoungRicherCalculator onBack={() => setShowCalculator(false)} />;
   }
+
+  if (selectedStock) {
+    return (
+      <StockDetailPage
+        symbol={selectedStock.symbol}
+        name={selectedStock.name}
+        onBack={() => setSelectedStock(null)}
+      />
+    );
+  }
+
+  const handleSymbolClick = (symbol: string, name: string) => setSelectedStock({ symbol, name });
 
   return (
     <div className="min-h-screen bg-background text-slate-200">
@@ -117,22 +131,22 @@ export default function App() {
 
         {/* Index cards + sparklines */}
         <div className="mb-6">
-          <MarketOverview indices={data?.indices ?? []} loading={loading} />
+          <MarketOverview indices={data?.indices ?? []} loading={loading} onSymbolClick={handleSymbolClick} />
         </div>
 
         {/* Top movers */}
         <div className="mb-6">
-          <TopMovers gainers={data?.topGainers ?? []} losers={data?.topLosers ?? []} loading={loading} />
+          <TopMovers gainers={data?.topGainers ?? []} losers={data?.topLosers ?? []} loading={loading} onSymbolClick={handleSymbolClick} />
         </div>
 
         {/* Sector heatmap */}
         <div className="mb-6">
-          <SectorHeatmap sectors={data?.sectors ?? []} loading={loading} />
+          <SectorHeatmap sectors={data?.sectors ?? []} loading={loading} onSymbolClick={handleSymbolClick} />
         </div>
 
         {/* Commodities */}
         <div className="mb-6">
-          <CommoditiesPanel commodities={data?.commodities ?? []} loading={loading} />
+          <CommoditiesPanel commodities={data?.commodities ?? []} loading={loading} onSymbolClick={handleSymbolClick} />
         </div>
 
         {/* Earnings */}

@@ -8,6 +8,7 @@ const GAUGE_INDICES = ['^VIX', '^TNX'];
 interface Props {
   indices: StockQuote[];
   loading: boolean;
+  onSymbolClick?: (symbol: string, name: string) => void;
 }
 
 function Sparkline({ data, positive }: { data: { date: string; close: number }[]; positive: boolean }) {
@@ -36,12 +37,15 @@ function Sparkline({ data, positive }: { data: { date: string; close: number }[]
   );
 }
 
-function IndexCard({ quote }: { quote: StockQuote }) {
+function IndexCard({ quote, onClick }: { quote: StockQuote; onClick?: () => void }) {
   const positive = quote.changePercent >= 0;
   const tintClass = positive ? 'bg-up/5 border-up/15' : 'bg-down/5 border-down/15';
 
   return (
-    <div className={`rounded-xl border ${tintClass} p-4 flex flex-col gap-2`}>
+    <div
+      className={`rounded-xl border ${tintClass} p-4 flex flex-col gap-2 ${onClick ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+      onClick={onClick}
+    >
       <div className="flex items-start justify-between">
         <div>
           <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{quote.symbol.replace('^', '')}</p>
@@ -62,7 +66,7 @@ function IndexCard({ quote }: { quote: StockQuote }) {
   );
 }
 
-function GaugeCard({ quote }: { quote: StockQuote }) {
+function GaugeCard({ quote, onClick }: { quote: StockQuote; onClick?: () => void }) {
   const isVix = quote.symbol === '^VIX';
   const vixLevel = isVix
     ? quote.price > 30 ? 'HIGH FEAR' : quote.price > 20 ? 'CAUTION' : 'LOW'
@@ -72,7 +76,10 @@ function GaugeCard({ quote }: { quote: StockQuote }) {
     : colorClass(quote.changePercent);
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
+    <div
+      className={`rounded-xl border border-border bg-card p-4 ${onClick ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+      onClick={onClick}
+    >
       <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
         {quote.symbol.replace('^', '')}
       </p>
@@ -100,7 +107,7 @@ function SkeletonCard() {
   );
 }
 
-export function MarketOverview({ indices, loading }: Props) {
+export function MarketOverview({ indices, loading, onSymbolClick }: Props) {
   const mainIndices = indices.filter(i => DISPLAY_INDICES.includes(i.symbol));
   const gaugeIndices = indices.filter(i => GAUGE_INDICES.includes(i.symbol));
 
@@ -112,7 +119,12 @@ export function MarketOverview({ indices, loading }: Props) {
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mb-3">
         {loading
           ? [...Array(4)].map((_, i) => <SkeletonCard key={i} />)
-          : mainIndices.map(q => <IndexCard key={q.symbol} quote={q} />)}
+          : mainIndices.map(q => (
+              <IndexCard
+                key={q.symbol} quote={q}
+                onClick={onSymbolClick ? () => onSymbolClick(q.symbol, q.name) : undefined}
+              />
+            ))}
       </div>
       <div className="grid grid-cols-2 gap-3">
         {loading
@@ -123,7 +135,12 @@ export function MarketOverview({ indices, loading }: Props) {
                 <div className="h-7 bg-muted rounded w-20" />
               </div>
             ))
-          : gaugeIndices.map(q => <GaugeCard key={q.symbol} quote={q} />)}
+          : gaugeIndices.map(q => (
+              <GaugeCard
+                key={q.symbol} quote={q}
+                onClick={onSymbolClick ? () => onSymbolClick(q.symbol, q.name) : undefined}
+              />
+            ))}
       </div>
     </section>
   );
