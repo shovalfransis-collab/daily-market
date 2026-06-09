@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { ArrowLeft, TrendingUp } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { ArrowLeft, TrendingUp, ChevronDown } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend,
@@ -9,18 +9,34 @@ interface Props {
   onBack: () => void;
 }
 
-function fmt(n: number): string {
-  if (n >= 1_000_000_000) return `$${(n / 1_000_000_000).toFixed(2)}B`;
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}K`;
-  return `$${n.toFixed(0)}`;
+const CURRENCIES = [
+  { code: 'USD', symbol: '$',   name: 'US Dollar',         rate: 1 },
+  { code: 'EUR', symbol: '€',   name: 'Euro',              rate: 0.92 },
+  { code: 'GBP', symbol: '£',   name: 'British Pound',     rate: 0.79 },
+  { code: 'JPY', symbol: '¥',   name: 'Japanese Yen',      rate: 149.5 },
+  { code: 'CNY', symbol: 'CN¥', name: 'Chinese Yuan',      rate: 7.24 },
+  { code: 'AUD', symbol: 'A$',  name: 'Australian Dollar', rate: 1.53 },
+  { code: 'CAD', symbol: 'C$',  name: 'Canadian Dollar',   rate: 1.36 },
+  { code: 'CHF', symbol: 'Fr',  name: 'Swiss Franc',       rate: 0.90 },
+  { code: 'HKD', symbol: 'HK$', name: 'Hong Kong Dollar',  rate: 7.82 },
+  { code: 'SGD', symbol: 'S$',  name: 'Singapore Dollar',  rate: 1.34 },
+  { code: 'ILS', symbol: '₪',   name: 'Israeli Shekel',    rate: 3.70 },
+] as const;
+
+type Currency = typeof CURRENCIES[number];
+
+function fmtMoney(n: number, sym: string): string {
+  if (n >= 1_000_000_000) return `${sym}${(n / 1_000_000_000).toFixed(2)}B`;
+  if (n >= 1_000_000)     return `${sym}${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000)         return `${sym}${(n / 1_000).toFixed(1)}K`;
+  return `${sym}${n.toFixed(0)}`;
 }
 
-function fmtAxis(n: number): string {
-  if (n >= 1_000_000_000) return `$${(n / 1_000_000_000).toFixed(1)}B`;
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
-  return `$${n.toFixed(0)}`;
+function fmtAxis(n: number, sym: string): string {
+  if (n >= 1_000_000_000) return `${sym}${(n / 1_000_000_000).toFixed(1)}B`;
+  if (n >= 1_000_000)     return `${sym}${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000)         return `${sym}${(n / 1_000).toFixed(0)}K`;
+  return `${sym}${n.toFixed(0)}`;
 }
 
 function calcFV(principal: number, monthlyPmt: number, monthlyRate: number, months: number): number {
@@ -30,16 +46,50 @@ function calcFV(principal: number, monthlyPmt: number, monthlyRate: number, mont
 }
 
 function SliderInput({
-  label, value, min, max, step, display, onChange,
+  label, value, min, max, step, display, parse, onChange,
 }: {
   label: string; value: number; min: number; max: number;
-  step: number; display: (v: number) => string; onChange: (v: number) => void;
+  step: number; display: (v: number) => string;
+  parse: (s: string) => number; onChange: (v: number) => void;
 }) {
+  const [text, setText] = useState('');
+  const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    if (!focused) setText(display(value));
+  }, [value, focused, display]);
+
+  const handleFocus = () => {
+    setFocused(true);
+    setText(String(value));
+  };
+
+  const handleBlur = () => {
+    setFocused(false);
+    const n = parse(text);
+    if (!isNaN(n)) onChange(Math.min(max, Math.max(min, n)));
+    else setText(display(value));
+  };
+
+  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setText(e.target.value);
+    const n = parse(e.target.value);
+    if (!isNaN(n)) onChange(Math.min(max, Math.max(min, n)));
+  };
+
   return (
     <div>
-      <div className="flex justify-between mb-1.5">
+      <div className="flex justify-between items-center mb-1.5">
         <span className="text-sm text-slate-400">{label}</span>
-        <span className="text-sm font-semibold text-slate-100">{display(value)}</span>
+        <input
+          type="text"
+          value={focused ? text : display(value)}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          onChange={handleTextChange}
+          className="text-sm font-semibold text-slate-100 bg-muted border border-border rounded px-2 py-0.5
+            focus:border-up outline-none text-right w-28 transition-colors"
+        />
       </div>
       <input
         type="range" min={min} max={max} step={step} value={value}
@@ -68,16 +118,67 @@ function Stat({ label, value, sub, accent }: { label: string; value: string; sub
   );
 }
 
+function CurrencySelector({ currency, onChange }: { currency: Currency; onChange: (c: Currency) => void }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted border border-border
+          text-sm text-slate-300 hover:bg-[#1e1e2e] transition-colors"
+      >
+        <span className="font-mono font-bold text-up">{currency.symbol}</span>
+        <span>{currency.code}</span>
+        <ChevronDown size={13} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-50 bg-card border border-border rounded-xl shadow-xl
+          min-w-[200px] overflow-hidden">
+          {CURRENCIES.map(c => (
+            <button
+              key={c.code}
+              onClick={() => { onChange(c); setOpen(false); }}
+              className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-muted transition-colors text-left
+                ${c.code === currency.code ? 'text-up bg-muted' : 'text-slate-300'}`}
+            >
+              <span className="font-mono w-6 text-center font-bold">{c.symbol}</span>
+              <span className="font-medium">{c.code}</span>
+              <span className="text-slate-500 text-xs ml-auto">{c.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function YoungRicherCalculator({ onBack }: Props) {
+  const [currency, setCurrency] = useState<Currency>(CURRENCIES[0]);
   const [startAge, setStartAge] = useState(20);
   const [retireAge, setRetireAge] = useState(60);
   const [initialCapital, setInitialCapital] = useState(100_000);
   const [monthlyInvestment, setMonthlyInvestment] = useState(1_000);
   const [annualReturn, setAnnualReturn] = useState(12);
 
+  const handleCurrencyChange = (newCur: Currency) => {
+    const ratio = newCur.rate / currency.rate;
+    setInitialCapital(v => Math.round(v * ratio / 100) * 100);
+    setMonthlyInvestment(v => Math.round(v * ratio / 10) * 10);
+    setCurrency(newCur);
+  };
+
+  const sym = currency.symbol;
+  const fmt = (n: number) => fmtMoney(n, sym);
+
   const years = Math.max(0, retireAge - startAge);
   const monthlyRate = annualReturn / 100 / 12;
   const totalMonths = years * 12;
+
+  const capitalMax = Math.round(1_000_000 * currency.rate / 100) * 100;
+  const monthlyMax = Math.round(10_000 * currency.rate / 10) * 10;
+  const capitalStep = Math.max(1, Math.round(5_000 * currency.rate / 100) * 100);
+  const monthlyStep = Math.max(1, Math.round(50 * currency.rate / 10) * 10);
 
   const finalValue = useMemo(
     () => calcFV(initialCapital, monthlyInvestment, monthlyRate, totalMonths),
@@ -109,6 +210,10 @@ export function YoungRicherCalculator({ onBack }: Props) {
     if (v <= startAge) setStartAge(v - 1);
   };
 
+  const parseAge = (s: string) => Math.round(parseFloat(s));
+  const parsePct = (s: string) => parseFloat(s.replace('%', ''));
+  const parseMoney = (s: string) => parseFloat(s.replace(/[^0-9.]/g, ''));
+
   return (
     <div className="min-h-screen bg-background text-slate-200">
       <div className="max-w-screen-xl mx-auto px-4 py-6">
@@ -122,7 +227,7 @@ export function YoungRicherCalculator({ onBack }: Props) {
             <ArrowLeft size={14} />
             Back
           </button>
-          <div>
+          <div className="flex-1">
             <h1 className="text-2xl font-medium text-slate-100 tracking-tight flex items-center gap-2">
               <TrendingUp size={20} className="text-up shrink-0" />
               The Younger The Richer Calculator
@@ -131,6 +236,7 @@ export function YoungRicherCalculator({ onBack }: Props) {
               Compound interest — the 8th wonder of the world
             </p>
           </div>
+          <CurrencySelector currency={currency} onChange={handleCurrencyChange} />
         </header>
 
         {/* How it works */}
@@ -170,23 +276,23 @@ export function YoungRicherCalculator({ onBack }: Props) {
             <div className="space-y-6">
               <SliderInput
                 label="Starting Age" value={startAge} min={15} max={70} step={1}
-                display={v => `${v} yrs`} onChange={handleStartAge}
+                display={v => `${v} yrs`} parse={parseAge} onChange={handleStartAge}
               />
               <SliderInput
                 label="Retirement Age" value={retireAge} min={Math.min(startAge + 1, 90)} max={90} step={1}
-                display={v => `${v} yrs`} onChange={handleRetireAge}
+                display={v => `${v} yrs`} parse={parseAge} onChange={handleRetireAge}
               />
               <SliderInput
-                label="Initial Capital" value={initialCapital} min={0} max={1_000_000} step={5_000}
-                display={fmt} onChange={setInitialCapital}
+                label="Initial Capital" value={initialCapital} min={0} max={capitalMax} step={capitalStep}
+                display={fmt} parse={parseMoney} onChange={setInitialCapital}
               />
               <SliderInput
-                label="Monthly Investment" value={monthlyInvestment} min={0} max={10_000} step={50}
-                display={fmt} onChange={setMonthlyInvestment}
+                label="Monthly Investment" value={monthlyInvestment} min={0} max={monthlyMax} step={monthlyStep}
+                display={fmt} parse={parseMoney} onChange={setMonthlyInvestment}
               />
               <SliderInput
                 label="Annual Return" value={annualReturn} min={1} max={30} step={0.5}
-                display={v => `${v}%`} onChange={setAnnualReturn}
+                display={v => `${v}%`} parse={parsePct} onChange={setAnnualReturn}
               />
             </div>
           </div>
@@ -210,7 +316,7 @@ export function YoungRicherCalculator({ onBack }: Props) {
             </div>
 
             <div className="mt-4 p-3 rounded-lg bg-muted text-xs text-slate-400 leading-relaxed">
-              Every <span className="text-slate-200">$1</span> put in at age{' '}
+              Every <span className="text-slate-200">{sym}1</span> put in at age{' '}
               <span className="text-slate-200">{startAge}</span> becomes{' '}
               <span className="text-up font-medium">
                 {fmt(Math.pow(1 + monthlyRate, totalMonths))}
@@ -252,7 +358,7 @@ export function YoungRicherCalculator({ onBack }: Props) {
               <YAxis
                 stroke="#334155"
                 tick={{ fill: '#64748b', fontSize: 11 }}
-                tickFormatter={fmtAxis}
+                tickFormatter={n => fmtAxis(n, sym)}
                 width={72}
               />
               <Tooltip
@@ -289,7 +395,7 @@ export function YoungRicherCalculator({ onBack }: Props) {
         </div>
 
         <footer className="text-center text-xs text-muted-foreground py-4 border-t border-border mt-4">
-          Assumes monthly compounding · Past performance not indicative of future results
+          Assumes monthly compounding · Exchange rates approximate · Past performance not indicative of future results
         </footer>
       </div>
     </div>
