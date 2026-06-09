@@ -17,10 +17,6 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [showCalculator, setShowCalculator] = useState(false);
 
-  if (showCalculator) {
-    return <YoungRicherCalculator onBack={() => setShowCalculator(false)} />;
-  }
-
   const load = useCallback(async (bust = false) => {
     try {
       setError(null);
@@ -49,21 +45,18 @@ export default function App() {
         weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
       });
 
+  if (showCalculator) {
+    return <YoungRicherCalculator onBack={() => setShowCalculator(false)} />;
+  }
+
   return (
     <div className="min-h-screen bg-background text-slate-200">
       <div className="max-w-screen-xl mx-auto px-4 py-6">
         {/* Header */}
-        <header className="flex items-center justify-between mb-6">
+        <header className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-2xl font-medium text-slate-100 tracking-tight">Market Daily</h1>
             <p className="text-sm text-muted-foreground mt-0.5">{dateStr}</p>
-            <button
-              onClick={() => setShowCalculator(true)}
-              className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-up/10 border border-up/20 text-xs font-medium text-up hover:bg-up/20 transition-colors"
-            >
-              <TrendingUp size={12} />
-              The Younger The Richer Calculator
-            </button>
           </div>
           <button
             onClick={handleRefresh}
@@ -74,6 +67,40 @@ export default function App() {
             {refreshing ? 'Refreshing…' : 'Refresh'}
           </button>
         </header>
+
+        {/* Calculator CTA Banner */}
+        <div className="mb-6">
+          <button
+            onClick={() => setShowCalculator(true)}
+            className="calculator-cta w-full group relative overflow-hidden rounded-2xl border border-amber-500/40 bg-gradient-to-r from-[#0d1f0d] via-[#0f2318] to-[#0d1a0d] px-6 py-4 text-left transition-all duration-300 hover:border-amber-400/70 hover:shadow-[0_0_40px_rgba(34,197,94,0.25)] hover:scale-[1.01]"
+          >
+            {/* shimmer sweep */}
+            <span className="pointer-events-none absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/5 to-transparent" />
+            {/* glow orb */}
+            <span className="pointer-events-none absolute -top-6 right-16 h-20 w-20 rounded-full bg-up/20 blur-2xl animate-pulse" />
+            <span className="pointer-events-none absolute -bottom-4 right-32 h-14 w-14 rounded-full bg-amber-400/15 blur-xl animate-pulse [animation-delay:0.7s]" />
+
+            <div className="relative flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-up/20 border border-up/30 group-hover:bg-up/30 transition-colors">
+                  <TrendingUp size={20} className="text-up" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-amber-400/80 mb-0.5">Free Tool</p>
+                  <p className="text-base font-bold text-slate-100 group-hover:text-white transition-colors">
+                    The Younger The Richer Calculator
+                  </p>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    See exactly how much wealth you'll build — start age, monthly input, annual return → real number
+                  </p>
+                </div>
+              </div>
+              <div className="shrink-0 flex items-center gap-2 rounded-xl bg-up px-4 py-2 text-sm font-bold text-white shadow-[0_0_20px_rgba(34,197,94,0.4)] group-hover:shadow-[0_0_30px_rgba(34,197,94,0.6)] transition-shadow">
+                Try it →
+              </div>
+            </div>
+          </button>
+        </div>
 
         {error && (
           <div className="mb-6 p-4 rounded-lg bg-[#1a0a0a] border border-down/30 text-down text-sm">
