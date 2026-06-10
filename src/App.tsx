@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RefreshCw, TrendingUp } from 'lucide-react';
 import { fetchNewsletter } from './lib/api';
+import { isMarketOpen } from './lib/utils';
 import { MarketSummary } from './types';
 import { NewsletterSummaryCard } from './components/NewsletterSummary';
 import { MarketOverview } from './components/MarketOverview';
@@ -20,13 +21,6 @@ import { EconomicCalendarPanel } from './components/EconomicCalendarPanel';
 import { CryptoPanel } from './components/CryptoPanel';
 import { Watchlist } from './components/Watchlist';
 
-function isMarketOpen(): boolean {
-  const et = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
-  const day = et.getDay();
-  if (day === 0 || day === 6) return false;
-  const mins = et.getHours() * 60 + et.getMinutes();
-  return mins >= 9 * 60 + 30 && mins < 16 * 60;
-}
 
 export default function App() {
   const [data, setData] = useState<MarketSummary | null>(null);

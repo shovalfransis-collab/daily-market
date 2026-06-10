@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   ArrowLeft, TrendingUp, TrendingDown, Minus,
   ExternalLink, Users, Globe, Building2,
@@ -8,7 +8,7 @@ import {
   Tooltip, ResponsiveContainer, BarChart, Bar, Cell,
 } from 'recharts';
 import { fetchChartRange, fetchQuoteSummary } from '../lib/yahooFinance';
-import { formatPrice, formatPercent, formatMarketCap, formatVolume, colorClass } from '../lib/utils';
+import { formatPrice, formatPercent, formatMarketCap, formatVolume, colorClass, isMarketOpen } from '../lib/utils';
 import { FinancialMetrics, AIScores } from '../types';
 import { generateAnalysis, generateFromRec, outlookColor, outlookBg, valuationColor } from '../lib/stockAnalysis';
 
@@ -346,40 +346,57 @@ export function StockDetailPage({ symbol, name, onBack }: Props) {
   const [showFullDesc, setShowFullDesc] = useState(false);
   const chartCache = useRef<Record<number, { points: ChartPoint[]; price: typeof currentPrice }>>({});
 
-  // Clear cache when symbol changes so we never serve another stock's data
+  // Clear ALL cached data when symbol changes
   useEffect(() => {
     chartCache.current = {};
     setChartData([]);
+    setChartLoading(true);
     setCurrentPrice({ price: 0, change: 0, changePct: 0 });
   }, [symbol]);
 
-  // Fetch chart data
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      if (chartCache.current[activeRange]) {
-        const c = chartCache.current[activeRange];
-        setChartData(c.points);
-        setCurrentPrice(c.price);
-        setChartLoading(false);
-        return;
-      }
-      setChartLoading(true);
-      try {
-        const { range, interval, label } = RANGES[activeRange];
-        const data = await fetchChartRange(symbol, range, interval);
-        if (cancelled) return;
-        const points = parseChartData(data, label);
-        const price  = getCurrentPrice(data);
-        chartCache.current[activeRange] = { points, price };
-        setChartData(points);
-        setCurrentPrice(price);
-      } catch { if (!cancelled) setChartData([]); }
-      finally   { if (!cancelled) setChartLoading(false); }
-    };
-    load();
-    return () => { cancelled = true; };
+  const loadChart = useCallback(async (bust = false) => {
+    if (!bust && chartCache.current[activeRange]) {
+      const c = chartCache.current[activeRange];
+      setChartData(c.points);
+      setCurrentPrice(c.price);
+      setChartLoading(false);
+      return;
+    }
+    // Clear stale data immediately so switching ranges never shows old chart
+    setChartData([]);
+    setChartLoading(true);
+    try {
+      const { range, interval, label } = RANGES[activeRange];
+      const data = await fetchChartRange(symbol, range, interval);
+      const points = parseChartData(data, label);
+      const price  = getCurrentPrice(data);
+      chartCache.current[activeRange] = { points, price };
+      setChartData(points);
+      setCurrentPrice(price);
+    } catch {
+      setChartData([]);
+    } finally {
+      setChartLoading(false);
+    }
   }, [symbol, activeRange]);
+
+  // Load on mount + whenever symbol/range changes
+  useEffect(() => {
+    let alive = true;
+    loadChart().then(() => { if (!alive) return; });
+    return () => { alive = false; };
+  }, [loadChart]);
+
+  // Real-time polling: 30s for 1D, 60s for 5D, 5min for daily+
+  useEffect(() => {
+    if (!isMarketOpen()) return;
+    const ms = activeRange === 0 ? 30_000 : activeRange === 1 ? 60_000 : 5 * 60_000;
+    const id = setInterval(() => {
+      delete chartCache.current[activeRange];
+      loadChart(true);
+    }, ms);
+    return () => clearInterval(id);
+  }, [activeRange, loadChart]);
 
   // Fetch financial metrics (once per symbol)
   useEffect(() => {

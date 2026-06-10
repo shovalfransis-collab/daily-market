@@ -38,3 +38,11 @@ export function colorClass(value: number): string {
   if (value < 0) return 'text-down';
   return 'text-neutral';
 }
+
+export function isMarketOpen(): boolean {
+  const et = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  const day = et.getDay();
+  if (day === 0 || day === 6) return false;
+  const mins = et.getHours() * 60 + et.getMinutes();
+  return mins >= 9 * 60 + 30 && mins < 16 * 60;
+}

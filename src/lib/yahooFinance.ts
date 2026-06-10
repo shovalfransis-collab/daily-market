@@ -53,53 +53,9 @@ async function fetchChart(symbol: string, range = '1d'): Promise<any> {
 
 export async function fetchChartRange(symbol: string, range: string, interval: string): Promise<any> {
   const enc = encodeURIComponent(symbol);
-  
-  let params: Record<string, string>;
-  
-  if (range === '1d') {
-    // For 1D intraday only, use range + interval
-    params = { range, interval };
-  } else {
-    // For all other ranges (5d, 1mo, 6mo, ytd, 1y, 5y, max), use period1/period2
-    const now = Math.floor(Date.now() / 1000);
-    let period1: number;
-    
-    switch (range) {
-      case '5d':
-        period1 = now - (5 * 86400);
-        break;
-      case '1mo':
-        period1 = now - (30 * 86400);
-        break;
-      case '6mo':
-        period1 = now - (180 * 86400);
-        break;
-      case 'ytd': {
-        const year = new Date().getFullYear();
-        const ytdStart = new Date(year, 0, 1);
-        period1 = Math.floor(ytdStart.getTime() / 1000);
-        break;
-      }
-      case '1y':
-        period1 = now - (365 * 86400);
-        break;
-      case '5y':
-        period1 = now - (5 * 365 * 86400);
-        break;
-      case 'max':
-        period1 = 0; // Very old date
-        break;
-      default:
-        period1 = now - (30 * 86400);
-    }
-    
-    params = { 
-      period1: period1.toString(),
-      period2: now.toString(),
-      interval
-    };
-  }
-  
+  const intraday = range === '1d' || range === '5d';
+  const params: Record<string, string> = { range, interval };
+  if (!intraday) params.includeAdjustedClose = 'true';
   return yfGet(`/v8/finance/chart/${enc}`, '1', params);
 }
 
