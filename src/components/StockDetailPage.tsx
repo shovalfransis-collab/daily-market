@@ -106,7 +106,7 @@ const RANGES = [
 
 // ── Types ──────────────────────────────────────────────────────
 
-interface ChartPoint { t: string; close: number; high: number; low: number; open: number; volume?: number }
+interface ChartPoint { t: string; close: number; high: number; low: number; open: number; volume: number }
 
 // ── Helpers ────────────────────────────────────────────────────
 
@@ -115,25 +115,42 @@ function parseChartData(data: any, rangeLabel: string): ChartPoint[] {
     const result = data?.chart?.result?.[0];
     if (!result) return [];
     const timestamps: number[] = result.timestamp ?? [];
+    if (!timestamps.length) return [];
+
     const q = result.indicators?.quote?.[0] ?? {};
-    const closes  = q.close  ?? [];
-    const highs   = q.high   ?? [];
-    const lows    = q.low    ?? [];
-    const opens   = q.open   ?? [];
-    const volumes = q.volume ?? [];
+    const adjCloses: (number | null)[] = result.indicators?.adjclose?.[0]?.adjclose ?? [];
+    const rawCloses: (number | null)[] = q.close ?? [];
     const isIntraday = rangeLabel === '1D' || rangeLabel === '5D';
+
+    // For daily/weekly/monthly ranges prefer adjclose (splits/dividends adjusted)
+    const closes = !isIntraday && adjCloses.some(v => v != null && v > 0)
+      ? adjCloses
+      : rawCloses;
+
+    const highs:   (number | null)[] = q.high   ?? [];
+    const lows:    (number | null)[] = q.low    ?? [];
+    const opens:   (number | null)[] = q.open   ?? [];
+    const volumes: (number | null)[] = q.volume ?? [];
+
     return timestamps
-      .map((ts, i) => ({
-        t: isIntraday
-          ? new Date(ts * 1000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
-          : new Date(ts * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: rangeLabel === 'MAX' || rangeLabel === '5Y' ? '2-digit' : undefined }),
-        close:  closes[i]  ?? 0,
-        high:   highs[i]   ?? 0,
-        low:    lows[i]    ?? 0,
-        open:   opens[i]   ?? 0,
-        volume: volumes[i] ?? 0,
-      }))
-      .filter(p => p.close > 0);
+      .map((ts, i) => {
+        const close = closes[i];
+        if (!ts || close == null || close <= 0) return null;
+        const high  = highs[i];
+        const low   = lows[i];
+        const open  = opens[i];
+        return {
+          t: isIntraday
+            ? new Date(ts * 1000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+            : new Date(ts * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: rangeLabel === 'MAX' || rangeLabel === '5Y' ? '2-digit' : undefined }),
+          close,
+          high:   high   != null && high   > 0 ? high   : close,
+          low:    low    != null && low    > 0 ? low    : close,
+          open:   open   != null && open   > 0 ? open   : close,
+          volume: volumes[i] ?? 0,
+        };
+      })
+      .filter((p): p is NonNullable<typeof p> => p !== null) as ChartPoint[];
   } catch { return []; }
 }
 

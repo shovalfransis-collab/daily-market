@@ -1,4 +1,4 @@
-import { StockQuote, PricePoint, SectorData, EarningsReport, CurrencyRate, SearchResult, FinancialMetrics } from '../types';
+import { StockQuote, PricePoint, SectorData, EarningsReport, CurrencyRate, SearchResult, FinancialMetrics, NewsItem, EconomicEvent } from '../types';
 
 
 const SECTOR_MAP: Record<string, string> = {
@@ -16,9 +16,15 @@ const COMMODITY_NAMES: Record<string, string> = {
 const INDEX_NAMES: Record<string, string> = {
   '^GSPC': 'S&P 500', '^IXIC': 'NASDAQ', '^DJI': 'Dow Jones',
   '^RUT': 'Russell 2000', '^VIX': 'VIX Fear Index', '^TNX': '10Y Treasury',
+  'DX-Y.NYB': 'US Dollar Index',
 };
 
-export const INDICES = ['^GSPC', '^IXIC', '^DJI', '^RUT', '^VIX', '^TNX'];
+export const INDICES = ['^GSPC', '^IXIC', '^DJI', '^RUT', '^VIX', '^TNX', 'DX-Y.NYB'];
+
+export const CRYPTO_SYMBOLS = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'BNB-USD'];
+const CRYPTO_NAMES: Record<string, string> = {
+  'BTC-USD': 'Bitcoin', 'ETH-USD': 'Ethereum', 'SOL-USD': 'Solana', 'BNB-USD': 'BNB',
+};
 export const SECTOR_ETFS = ['XLK','XLF','XLE','XLV','XLY','XLP','XLI','XLB','XLU','XLRE','XLC'];
 export const COMMODITIES = ['GLD','SLV','USO','UNG','COPX','XME','WEAT','CORN','SOYB','WOOD','LIT'];
 
@@ -47,7 +53,10 @@ async function fetchChart(symbol: string, range = '1d'): Promise<any> {
 
 export async function fetchChartRange(symbol: string, range: string, interval: string): Promise<any> {
   const enc = encodeURIComponent(symbol);
-  return yfGet(`/v8/finance/chart/${enc}`, '1', { range, interval });
+  const intraday = range === '1d' || range === '5d';
+  const params: Record<string, string> = { range, interval };
+  if (!intraday) { params.includeAdjustedClose = 'true'; params.events = 'div,splits'; }
+  return yfGet(`/v8/finance/chart/${enc}`, '1', params);
 }
 
 function parseChartQuote(sym: string, data: any): StockQuote | null {
@@ -104,34 +113,142 @@ export async function fetchBatch(symbols: string[], includeHistory = false): Pro
     .map(r => r.value);
 }
 
-export async function fetchTopMovers(): Promise<{ gainers: StockQuote[]; losers: StockQuote[]; active: StockQuote[] }> {
-  const fetchScreener = async (scrId: string): Promise<StockQuote[]> => {
+const MOVERS_CACHE_KEY = 'md_top_movers_cache';
+
+export async function fetchTopMovers(): Promise<{ gainers: StockQuote[]; losers: StockQuote[]; active: StockQuote[]; gainersTotal: number; losersTotal: number }> {
+  const fetchScreener = async (scrId: string): Promise<{ quotes: StockQuote[]; total: number }> => {
     try {
       const data = await yfGet(
         '/v1/finance/screener/predefined/saved', '1',
         { scrIds: scrId, count: '20', formatted: 'false' }
       );
-      const quotes: any[] = data?.finance?.result?.[0]?.quotes ?? [];
-      return quotes.map((q: any) => ({
-        symbol: q.symbol ?? '',
-        name: q.longName || q.shortName || q.symbol || '',
-        price: q.regularMarketPrice ?? 0,
-        change: q.regularMarketChange ?? 0,
-        changePercent: q.regularMarketChangePercent ?? 0,
-        volume: q.regularMarketVolume ?? 0,
-        marketCap: q.marketCap,
-      }));
+      const result = data?.finance?.result?.[0];
+      const total: number = result?.total ?? 0;
+      const quotes: any[] = result?.quotes ?? [];
+      return {
+        total,
+        quotes: quotes.map((q: any) => ({
+          symbol: q.symbol ?? '',
+          name: q.longName || q.shortName || q.symbol || '',
+          price: q.regularMarketPrice ?? 0,
+          change: q.regularMarketChange ?? 0,
+          changePercent: q.regularMarketChangePercent ?? 0,
+          volume: q.regularMarketVolume ?? 0,
+          marketCap: q.marketCap,
+          preMarketPrice: q.preMarketPrice,
+          preMarketChangePercent: q.preMarketChangePercent,
+          postMarketPrice: q.postMarketPrice,
+          postMarketChangePercent: q.postMarketChangePercent,
+        })),
+      };
     } catch {
-      return [];
+      return { quotes: [], total: 0 };
     }
   };
 
-  const [gainers, losers, active] = await Promise.all([
+  const [g, l, a] = await Promise.all([
     fetchScreener('day_gainers'),
     fetchScreener('day_losers'),
     fetchScreener('most_actives'),
   ]);
-  return { gainers, losers, active };
+  const gainers = g.quotes;
+  const losers = l.quotes;
+  const active = a.quotes;
+
+  if (gainers.length > 0 && losers.length > 0) {
+    try {
+      localStorage.setItem(MOVERS_CACHE_KEY, JSON.stringify({ gainers, losers, active, gainersTotal: g.total, losersTotal: l.total, ts: Date.now() }));
+    } catch {}
+    return { gainers, losers, active, gainersTotal: g.total, losersTotal: l.total };
+  }
+
+  try {
+    const raw = localStorage.getItem(MOVERS_CACHE_KEY);
+    if (raw) {
+      const cached = JSON.parse(raw);
+      return {
+        gainers: cached.gainers ?? [],
+        losers: cached.losers ?? [],
+        active: cached.active ?? [],
+        gainersTotal: cached.gainersTotal ?? 0,
+        losersTotal: cached.losersTotal ?? 0,
+      };
+    }
+  } catch {}
+
+  return { gainers, losers, active, gainersTotal: g.total, losersTotal: l.total };
+}
+
+export async function fetchCrypto(): Promise<StockQuote[]> {
+  const quotes = await fetchBatch(CRYPTO_SYMBOLS, false);
+  return quotes.map(q => ({ ...q, name: CRYPTO_NAMES[q.symbol] || q.name }));
+}
+
+export async function fetchNews(): Promise<NewsItem[]> {
+  const parseItems = (items: any[]): NewsItem[] =>
+    items.map((n: any) => ({
+      title: n.title ?? '',
+      publisher: n.publisher ?? '',
+      link: n.link ?? '',
+      publishedAt: n.providerPublishTime ?? 0,
+      thumbnail: n.thumbnail?.resolutions?.[0]?.url,
+    })).filter(n => n.title);
+
+  try {
+    // Fetch top market stories via S&P 500 and NASDAQ symbols — these return YF's actual top headlines
+    const [spData, ndxData] = await Promise.all([
+      yfGet('/v1/finance/search', '1', { q: '^GSPC', newsCount: '8', quotesCount: '0', enableNavLinks: 'false' }),
+      yfGet('/v1/finance/search', '1', { q: '^IXIC', newsCount: '8', quotesCount: '0', enableNavLinks: 'false' }),
+    ]);
+
+    const seen = new Set<string>();
+    const combined: NewsItem[] = [];
+    for (const item of [...parseItems(spData?.news ?? []), ...parseItems(ndxData?.news ?? [])]) {
+      if (!seen.has(item.title)) {
+        seen.add(item.title);
+        combined.push(item);
+      }
+    }
+
+    if (combined.length >= 4) return combined.slice(0, 12);
+  } catch {}
+
+  // fallback
+  try {
+    const data = await yfGet('/v1/finance/search', '1', {
+      q: 'stock market',
+      newsCount: '12',
+      quotesCount: '0',
+      enableNavLinks: 'false',
+    });
+    return parseItems(data?.news ?? []);
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchEconomicCalendar(): Promise<EconomicEvent[]> {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const data = await yfGet('/v1/finance/calendar/economic', '1', { date: today });
+    const events: any[] = data?.finance?.result ?? [];
+    return events.slice(0, 12).map((e: any) => ({
+      event: e.eventName ?? e.event ?? '',
+      date: e.date ?? today,
+      time: e.time,
+      actual: e.actual,
+      estimate: e.estimate,
+      prior: e.prior,
+      impact: (['HIGH', 'high', '3'].includes(String(e.importance))
+        ? 'high'
+        : ['MEDIUM', 'medium', '2'].includes(String(e.importance))
+        ? 'medium'
+        : 'low') as 'high' | 'medium' | 'low',
+      country: e.country ?? 'US',
+    })).filter(e => e.event);
+  } catch {
+    return [];
+  }
 }
 
 export async function fetchEarningsToday(): Promise<EarningsReport[]> {

@@ -1,17 +1,28 @@
-import { TrendingUp, TrendingDown } from 'lucide-react';
+import { useState } from 'react';
+import { TrendingUp, TrendingDown, Activity } from 'lucide-react';
 import { StockQuote } from '../types';
-import { formatPrice, formatPercent, formatMarketCap } from '../lib/utils';
+import { formatPrice, formatPercent } from '../lib/utils';
 
 interface Props {
   gainers: StockQuote[];
   losers: StockQuote[];
+  preMovers: StockQuote[];
+  postMovers: StockQuote[];
   loading: boolean;
   onSymbolClick?: (symbol: string, name: string) => void;
 }
 
-function MoverRow({ quote, maxPct, onClick }: { quote: StockQuote; maxPct: number; onClick?: () => void }) {
-  const positive = quote.changePercent >= 0;
-  const barWidth = Math.min(100, (Math.abs(quote.changePercent) / Math.max(maxPct, 1)) * 100);
+function MoverRow({ quote, maxPct, usePrePost, isPost, onClick }: {
+  quote: StockQuote; maxPct: number; usePrePost?: boolean; isPost?: boolean; onClick?: () => void;
+}) {
+  const pct = usePrePost
+    ? (isPost ? (quote.postMarketChangePercent ?? quote.changePercent) : (quote.preMarketChangePercent ?? quote.changePercent))
+    : quote.changePercent;
+  const price = usePrePost
+    ? (isPost ? (quote.postMarketPrice ?? quote.price) : (quote.preMarketPrice ?? quote.price))
+    : quote.price;
+  const positive = pct >= 0;
+  const barWidth = Math.min(100, (Math.abs(pct) / Math.max(maxPct, 1)) * 100);
 
   return (
     <div
@@ -22,12 +33,12 @@ function MoverRow({ quote, maxPct, onClick }: { quote: StockQuote; maxPct: numbe
         <div className="flex items-center justify-between gap-2 mb-1">
           <span className="text-sm font-medium text-slate-100">{quote.symbol}</span>
           <span className={`text-sm font-medium ${positive ? 'text-up' : 'text-down'}`}>
-            {formatPercent(quote.changePercent)}
+            {formatPercent(pct)}
           </span>
         </div>
         <div className="flex items-center justify-between gap-2">
           <p className="text-xs text-muted-foreground truncate">{quote.name}</p>
-          <span className="text-xs text-slate-400 shrink-0">{formatPrice(quote.price)}</span>
+          <span className="text-xs text-slate-400 shrink-0">{formatPrice(price)}</span>
         </div>
         <div className="mt-1.5 h-1 bg-muted rounded-full overflow-hidden">
           <div
@@ -40,18 +51,26 @@ function MoverRow({ quote, maxPct, onClick }: { quote: StockQuote; maxPct: numbe
   );
 }
 
+type TabId = 'regular' | 'prepost';
+
 function Column({
-  title, quotes, icon: Icon, loading, onSymbolClick,
+  title, quotes, icon: Icon, colorClass, loading, usePrePost, isPost, onSymbolClick,
 }: {
-  title: string; quotes: StockQuote[]; icon: typeof TrendingUp;
-  loading: boolean; onSymbolClick?: (symbol: string, name: string) => void;
+  title: string; quotes: StockQuote[]; icon: typeof TrendingUp; colorClass: string;
+  loading: boolean; usePrePost?: boolean; isPost?: boolean;
+  onSymbolClick?: (symbol: string, name: string) => void;
 }) {
-  const maxPct = Math.max(...quotes.map(q => Math.abs(q.changePercent)), 1);
+  const maxPct = Math.max(...quotes.map(q => {
+    const pct = usePrePost
+      ? (isPost ? Math.abs(q.postMarketChangePercent ?? 0) : Math.abs(q.preMarketChangePercent ?? 0))
+      : Math.abs(q.changePercent);
+    return pct;
+  }), 1);
 
   return (
     <div className="rounded-xl border border-border bg-card p-4 flex flex-col">
       <div className="flex items-center gap-2 mb-3">
-        <Icon size={14} className={title.includes('Gainer') ? 'text-up' : 'text-down'} />
+        <Icon size={14} className={colorClass} />
         <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-widest">{title}</h3>
       </div>
       {loading ? (
@@ -73,6 +92,7 @@ function Column({
           {quotes.map(q => (
             <MoverRow
               key={q.symbol} quote={q} maxPct={maxPct}
+              usePrePost={usePrePost} isPost={isPost}
               onClick={onSymbolClick ? () => onSymbolClick(q.symbol, q.name) : undefined}
             />
           ))}
@@ -82,15 +102,41 @@ function Column({
   );
 }
 
-export function TopMovers({ gainers, losers, loading, onSymbolClick }: Props) {
+export function TopMovers({ gainers, losers, preMovers, postMovers, loading, onSymbolClick }: Props) {
+  const [tab, setTab] = useState<TabId>('regular');
+
   return (
     <section>
-      <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-3">
-        Top Movers
-      </h3>
+      <div className="flex items-center gap-4 mb-3">
+        <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Top Movers</h3>
+        <div className="flex gap-1 ml-auto">
+          <button
+            onClick={() => setTab('regular')}
+            className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${tab === 'regular' ? 'bg-muted text-slate-200 border border-border' : 'text-muted-foreground hover:text-slate-300'}`}
+          >
+            Regular
+          </button>
+          <button
+            onClick={() => setTab('prepost')}
+            className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${tab === 'prepost' ? 'bg-muted text-slate-200 border border-border' : 'text-muted-foreground hover:text-slate-300'}`}
+          >
+            Pre / Post
+          </button>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Column title="Top Gainers" quotes={gainers} icon={TrendingUp} loading={loading} onSymbolClick={onSymbolClick} />
-        <Column title="Top Losers" quotes={losers} icon={TrendingDown} loading={loading} onSymbolClick={onSymbolClick} />
+        {tab === 'regular' ? (
+          <>
+            <Column title="Top Gainers" quotes={gainers} icon={TrendingUp} colorClass="text-up" loading={loading} onSymbolClick={onSymbolClick} />
+            <Column title="Top Losers" quotes={losers} icon={TrendingDown} colorClass="text-down" loading={loading} onSymbolClick={onSymbolClick} />
+          </>
+        ) : (
+          <>
+            <Column title="Pre-Market" quotes={preMovers} icon={Activity} colorClass="text-amber-400" loading={loading} usePrePost isPost={false} onSymbolClick={onSymbolClick} />
+            <Column title="Post-Market" quotes={postMovers} icon={Activity} colorClass="text-amber-400" loading={loading} usePrePost isPost onSymbolClick={onSymbolClick} />
+          </>
+        )}
       </div>
     </section>
   );

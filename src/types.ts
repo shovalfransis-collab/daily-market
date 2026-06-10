@@ -19,6 +19,10 @@ export interface StockQuote {
   fiftyTwoWeekLow?: number;
   sector?: string;
   history?: PricePoint[];
+  preMarketPrice?: number;
+  preMarketChangePercent?: number;
+  postMarketPrice?: number;
+  postMarketChangePercent?: number;
 }
 
 export interface SectorData {
@@ -55,7 +59,6 @@ export interface SearchResult {
 }
 
 export interface FinancialMetrics {
-  // Valuation
   marketCap?: number;
   enterpriseValue?: number;
   pe?: number;
@@ -69,7 +72,6 @@ export interface FinancialMetrics {
   epsForward?: number;
   bookValue?: number;
   beta?: number;
-  // Growth & profitability
   revenue?: number;
   revenueGrowth?: number;
   grossProfit?: number;
@@ -81,13 +83,10 @@ export interface FinancialMetrics {
   netMargin?: number;
   roe?: number;
   roa?: number;
-  // Balance sheet
   debtToEquity?: number;
   currentRatio?: number;
-  // 52-week
   week52High?: number;
   week52Low?: number;
-  // Profile
   description?: string;
   sector?: string;
   industry?: string;
@@ -98,7 +97,6 @@ export interface FinancialMetrics {
   exchange?: string;
   longName?: string;
   shortName?: string;
-  // Analyst
   targetLow?: number;
   targetMean?: number;
   targetHigh?: number;
@@ -109,10 +107,8 @@ export interface FinancialMetrics {
   analystHold?: number;
   analystSell?: number;
   analystStrongSell?: number;
-  // Post-market
   postMarketPrice?: number;
   postMarketChangePercent?: number;
-  // Historical annual data
   annualRevenue?: { date: string; value: number }[];
   annualNetIncome?: { date: string; value: number }[];
   annualFreeCashFlow?: { date: string; value: number }[];
@@ -136,6 +132,37 @@ export interface CurrencyRate {
   flag: string;
 }
 
+export interface NewsItem {
+  title: string;
+  publisher: string;
+  link: string;
+  publishedAt: number;
+  thumbnail?: string;
+}
+
+export interface EconomicEvent {
+  event: string;
+  date: string;
+  time?: string;
+  actual?: string;
+  estimate?: string;
+  prior?: string;
+  impact: 'high' | 'medium' | 'low';
+  country: string;
+}
+
+export interface MarketBreadth {
+  advancers: number;
+  decliners: number;
+  sectorsUp: number;
+  sectorsDown: number;
+}
+
+export interface FearGreedScore {
+  score: number;
+  label: 'Extreme Fear' | 'Fear' | 'Neutral' | 'Greed' | 'Extreme Greed';
+}
+
 export interface MarketSummary {
   date: string;
   indices: StockQuote[];
@@ -145,6 +172,13 @@ export interface MarketSummary {
   topGainers: StockQuote[];
   topLosers: StockQuote[];
   mostActive: StockQuote[];
+  preMovers: StockQuote[];
+  postMovers: StockQuote[];
   earnings: EarningsReport[];
   summary: NewsletterSummary;
+  news: NewsItem[];
+  economicEvents: EconomicEvent[];
+  crypto: StockQuote[];
+  breadth: MarketBreadth;
+  fearGreed: FearGreedScore;
 }

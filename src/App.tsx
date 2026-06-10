@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { RefreshCw, TrendingUp } from 'lucide-react';
 import { fetchNewsletter } from './lib/api';
 import { MarketSummary } from './types';
@@ -10,9 +11,14 @@ import { CommoditiesPanel } from './components/CommoditiesPanel';
 import { CurrencyPanel } from './components/CurrencyPanel';
 import { EarningsTable } from './components/EarningsTable';
 import { YoungRicherCalculator } from './components/YoungRicherCalculator';
-import { StockDetailPage } from './components/StockDetailPage';
 import { ThemePicker, ThemeId } from './components/ThemePicker';
 import { GlobalSearch } from './components/GlobalSearch';
+import { FearGreedMeter } from './components/FearGreedMeter';
+import { MarketBreadthPanel } from './components/MarketBreadthPanel';
+import { NewsPanel } from './components/NewsPanel';
+import { EconomicCalendarPanel } from './components/EconomicCalendarPanel';
+import { CryptoPanel } from './components/CryptoPanel';
+import { Watchlist } from './components/Watchlist';
 
 function isMarketOpen(): boolean {
   const et = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
@@ -29,7 +35,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [theme, setTheme] = useState<ThemeId>(() => (localStorage.getItem('theme') as ThemeId) || 'obsidian');
   const [showCalculator, setShowCalculator] = useState(false);
-  const [selectedStock, setSelectedStock] = useState<{ symbol: string; name: string } | null>(null);
+  const navigate = useNavigate();
   const prevMarketOpen = useRef(false);
 
   const load = useCallback(async (bust = false) => {
@@ -52,7 +58,6 @@ export default function App() {
     localStorage.setItem('theme', theme);
   }, [theme]);
 
-  // Auto-refresh every 15 min during market hours; trigger once on market open
   useEffect(() => {
     const tick = () => {
       const open = isMarketOpen();
@@ -83,17 +88,7 @@ export default function App() {
     return <YoungRicherCalculator onBack={() => setShowCalculator(false)} />;
   }
 
-  if (selectedStock) {
-    return (
-      <StockDetailPage
-        symbol={selectedStock.symbol}
-        name={selectedStock.name}
-        onBack={() => setSelectedStock(null)}
-      />
-    );
-  }
-
-  const handleSymbolClick = (symbol: string, name: string) => setSelectedStock({ symbol, name });
+  const handleSymbolClick = (symbol: string, _name: string) => navigate(`/stock/${encodeURIComponent(symbol)}`);
 
   return (
     <div className="min-h-screen bg-background text-slate-200">
@@ -116,18 +111,20 @@ export default function App() {
           </button>
         </header>
 
+        {/* Fear & Greed */}
+        <div className="mb-4">
+          <FearGreedMeter data={data?.fearGreed ?? null} loading={loading} />
+        </div>
+
         {/* Calculator CTA Banner */}
         <div className="mb-6">
           <button
             onClick={() => setShowCalculator(true)}
             className="calculator-cta w-full group relative overflow-hidden rounded-2xl border border-amber-500/40 bg-gradient-to-r from-[#0d1f0d] via-[#0f2318] to-[#0d1a0d] px-6 py-4 text-left transition-all duration-300 hover:border-amber-400/70 hover:shadow-[0_0_40px_rgba(34,197,94,0.25)] hover:scale-[1.01]"
           >
-            {/* shimmer sweep */}
             <span className="pointer-events-none absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/5 to-transparent" />
-            {/* glow orb */}
             <span className="pointer-events-none absolute -top-6 right-16 h-20 w-20 rounded-full bg-up/20 blur-2xl animate-pulse" />
             <span className="pointer-events-none absolute -bottom-4 right-32 h-14 w-14 rounded-full bg-amber-400/15 blur-xl animate-pulse [animation-delay:0.7s]" />
-
             <div className="relative flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-up/20 border border-up/30 group-hover:bg-up/30 transition-colors">
@@ -163,9 +160,19 @@ export default function App() {
           </div>
         )}
 
+        {/* News */}
+        <div className="mb-6">
+          <NewsPanel news={data?.news ?? []} loading={loading} summary={data?.summary ?? null} />
+        </div>
+
         {/* Index cards + sparklines */}
         <div className="mb-6">
           <MarketOverview indices={data?.indices ?? []} loading={loading} onSymbolClick={handleSymbolClick} />
+        </div>
+
+        {/* Crypto */}
+        <div className="mb-6">
+          <CryptoPanel crypto={data?.crypto ?? []} loading={loading} onSymbolClick={handleSymbolClick} />
         </div>
 
         {/* Currencies */}
@@ -175,7 +182,19 @@ export default function App() {
 
         {/* Top movers */}
         <div className="mb-6">
-          <TopMovers gainers={data?.topGainers ?? []} losers={data?.topLosers ?? []} loading={loading} onSymbolClick={handleSymbolClick} />
+          <TopMovers
+            gainers={data?.topGainers ?? []}
+            losers={data?.topLosers ?? []}
+            preMovers={data?.preMovers ?? []}
+            postMovers={data?.postMovers ?? []}
+            loading={loading}
+            onSymbolClick={handleSymbolClick}
+          />
+        </div>
+
+        {/* Market breadth */}
+        <div className="mb-6">
+          <MarketBreadthPanel breadth={data?.breadth ?? null} loading={loading} />
         </div>
 
         {/* Sector heatmap */}
@@ -188,9 +207,19 @@ export default function App() {
           <CommoditiesPanel commodities={data?.commodities ?? []} loading={loading} onSymbolClick={handleSymbolClick} />
         </div>
 
+        {/* Economic calendar */}
+        <div className="mb-6">
+          <EconomicCalendarPanel events={data?.economicEvents ?? []} loading={loading} />
+        </div>
+
         {/* Earnings */}
         <div className="mb-6">
           <EarningsTable earnings={data?.earnings ?? []} loading={loading} />
+        </div>
+
+        {/* Watchlist */}
+        <div className="mb-6">
+          <Watchlist onSymbolClick={handleSymbolClick} />
         </div>
 
         <footer className="text-center text-xs text-muted-foreground py-4 border-t border-border mt-4">

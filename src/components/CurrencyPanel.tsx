@@ -14,7 +14,7 @@ function colorClass(pct: number) {
 }
 
 function formatRate(rate: number, pair: string): string {
-  if (pair.includes('JPY') || pair.includes('CNY') || pair.includes('MXN')) {
+  if (pair.includes('JPY') || pair.includes('CNY')) {
     return rate.toFixed(2);
   }
   return rate.toFixed(4);
