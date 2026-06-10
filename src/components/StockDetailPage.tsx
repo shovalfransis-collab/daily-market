@@ -10,6 +10,7 @@ import {
 import { fetchChartRange, fetchQuoteSummary } from '../lib/yahooFinance';
 import { formatPrice, formatPercent, formatMarketCap, formatVolume, colorClass } from '../lib/utils';
 import { FinancialMetrics, AIScores } from '../types';
+import { generateAnalysis, outlookColor, outlookBg, valuationColor } from '../lib/stockAnalysis';
 
 interface Props {
   symbol: string;
@@ -376,6 +377,7 @@ export function StockDetailPage({ symbol, name, onBack }: Props) {
   const description = liveDesc || staticDesc;
   const displayName = metrics?.longName || metrics?.shortName || name || symbol.replace('^', '');
   const aiScores   = metrics ? computeAIScores(metrics, currentPrice.price) : null;
+  const analysis   = metrics ? generateAnalysis(metrics, currentPrice.price, displayName) : null;
 
   const high = chartData.length ? Math.max(...chartData.map(p => p.high || p.close)) : 0;
   const low  = chartData.length ? Math.min(...chartData.filter(p => p.low > 0).map(p => p.low)) : 0;
@@ -651,6 +653,84 @@ export function StockDetailPage({ symbol, name, onBack }: Props) {
           </div>
         </div>
 
+        {/* ── Investment Analysis ────────────────────────────────── */}
+        {(metricsLoading || analysis) && (
+          <div className="rounded-xl border border-border bg-card p-5 mb-4">
+            <div className="flex items-center gap-2 mb-5">
+              <h2 className="text-sm font-semibold text-slate-100 uppercase tracking-wide">Investment Analysis</h2>
+              <span className="text-xs text-muted-foreground">— algorithmic, not financial advice</span>
+            </div>
+
+            {metricsLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-16" />
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <Skeleton className="h-32" /><Skeleton className="h-32" />
+                </div>
+                <Skeleton className="h-12 mt-3" />
+              </div>
+            ) : analysis ? (
+              <>
+                {/* Investment Thesis */}
+                <div className="rounded-lg bg-muted/50 border border-border p-4 mb-5">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Investment Thesis</p>
+                  <p className="text-sm text-slate-300 leading-relaxed">{analysis.thesis}</p>
+                </div>
+
+                {/* Bull / Bear columns */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+                  {/* Bull Case */}
+                  <div className="rounded-lg border border-up/20 bg-up/5 p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <TrendingUp size={14} className="text-up" />
+                      <p className="text-xs font-bold text-up uppercase tracking-widest">Bull Case</p>
+                    </div>
+                    <ul className="space-y-2">
+                      {analysis.bullCase.map((point, i) => (
+                        <li key={i} className="flex items-start gap-2 text-xs text-slate-300 leading-relaxed">
+                          <span className="text-up mt-0.5 shrink-0">▲</span>
+                          <span>{point}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Bear Case */}
+                  <div className="rounded-lg border border-down/20 bg-down/5 p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <TrendingDown size={14} className="text-down" />
+                      <p className="text-xs font-bold text-down uppercase tracking-widest">Bear Case</p>
+                    </div>
+                    <ul className="space-y-2">
+                      {analysis.bearCase.map((point, i) => (
+                        <li key={i} className="flex items-start gap-2 text-xs text-slate-300 leading-relaxed">
+                          <span className="text-down mt-0.5 shrink-0">▼</span>
+                          <span>{point}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Valuation Verdict */}
+                <div className="rounded-lg bg-muted/50 border border-border p-4">
+                  <div className="flex items-center gap-3 mb-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Valuation Verdict</p>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${
+                      analysis.valuation.verdict === 'Undervalued' ? 'bg-up/10 border-up/25 text-up' :
+                      analysis.valuation.verdict === 'Fairly Valued' ? 'bg-yellow-400/10 border-yellow-400/25 text-yellow-400' :
+                      analysis.valuation.verdict === 'Slightly Overvalued' ? 'bg-orange-400/10 border-orange-400/25 text-orange-400' :
+                      analysis.valuation.verdict === 'Overvalued' ? 'bg-down/10 border-down/25 text-down' :
+                      'bg-purple-400/10 border-purple-400/25 text-purple-400'
+                    }`}>{analysis.valuation.verdict}</span>
+                  </div>
+                  <p className="text-sm text-slate-400 leading-relaxed">{analysis.valuation.reasoning}</p>
+                </div>
+              </>
+            ) : null}
+          </div>
+        )}
+
         {/* ── Annual Financial Snapshot ──────────────────────────── */}
         {revenueData.length > 0 && (
           <div className="rounded-xl border border-border bg-card p-5 mb-4">
@@ -717,28 +797,83 @@ export function StockDetailPage({ symbol, name, onBack }: Props) {
           </div>
         )}
 
-        {/* ── Static Market Outlook ─────────────────────────────── */}
+        {/* ── Market Outlook ─────────────────────────────────────── */}
         <div className="rounded-xl border border-border bg-card p-5 mb-6">
           <div className="flex items-center gap-2 mb-4">
             <h2 className="text-sm font-semibold text-slate-100 uppercase tracking-wide">Market Outlook</h2>
             <span className="text-xs text-muted-foreground">— educational only, not financial advice</span>
           </div>
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            {[['Long Term', rec.longTerm], ['Short Term', rec.shortTerm]].map(([period, signal]) => (
-              <div key={period as string} className={`rounded-xl border p-4 ${signalBg(signal as Signal)}`}>
-                <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wide">{period}</p>
-                <div className="flex items-center gap-2">
-                  {(signal === 'strong-buy' || signal === 'buy') ? <TrendingUp size={16} className="text-up" /> :
-                   (signal === 'strong-sell' || signal === 'sell') ? <TrendingDown size={16} className="text-down" /> :
-                   <Minus size={16} className="text-yellow-400" />}
-                  <p className={`text-sm font-bold ${signalColor(signal as Signal)}`}>{signalLabel(signal as Signal)}</p>
-                </div>
+
+          {analysis ? (
+            <>
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                {([
+                  { period: 'Short Term', data: analysis.shortTerm },
+                  { period: 'Long Term',  data: analysis.longTerm  },
+                ] as const).map(({ period, data }) => (
+                  <div key={period} className={`rounded-xl border p-4 ${outlookBg(data.signal)}`}>
+                    <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wide">{period}</p>
+                    <div className="flex items-center gap-2 mb-2">
+                      {(data.signal === 'Bullish' || data.signal === 'Cautiously Bullish')
+                        ? <TrendingUp size={16} className="text-up" />
+                        : (data.signal === 'Bearish' || data.signal === 'Cautiously Bearish')
+                          ? <TrendingDown size={16} className="text-down" />
+                          : <Minus size={16} className="text-yellow-400" />}
+                      <p className={`text-sm font-bold ${outlookColor(data.signal)}`}>{data.signal}</p>
+                    </div>
+                    <p className="text-xs text-slate-400 leading-relaxed">{data.text}</p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <div className="rounded-lg bg-muted p-4">
-            <p className="text-sm text-slate-400 leading-relaxed">{rec.reasoning}</p>
-          </div>
+              {(analysis.catalysts.length > 0 || analysis.risks.length > 0) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1">
+                  {analysis.catalysts.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Key Catalysts</p>
+                      <ul className="space-y-1.5">
+                        {analysis.catalysts.map((c, i) => (
+                          <li key={i} className="flex items-start gap-2 text-xs text-slate-400">
+                            <span className="text-up shrink-0 mt-0.5">→</span><span>{c}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {analysis.risks.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Key Risks</p>
+                      <ul className="space-y-1.5">
+                        {analysis.risks.map((r, i) => (
+                          <li key={i} className="flex items-start gap-2 text-xs text-slate-400">
+                            <span className="text-down shrink-0 mt-0.5">→</span><span>{r}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                {[['Long Term', rec.longTerm], ['Short Term', rec.shortTerm]].map(([period, signal]) => (
+                  <div key={period as string} className={`rounded-xl border p-4 ${signalBg(signal as Signal)}`}>
+                    <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wide">{period}</p>
+                    <div className="flex items-center gap-2">
+                      {(signal === 'strong-buy' || signal === 'buy') ? <TrendingUp size={16} className="text-up" /> :
+                       (signal === 'strong-sell' || signal === 'sell') ? <TrendingDown size={16} className="text-down" /> :
+                       <Minus size={16} className="text-yellow-400" />}
+                      <p className={`text-sm font-bold ${signalColor(signal as Signal)}`}>{signalLabel(signal as Signal)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="rounded-lg bg-muted p-4">
+                <p className="text-sm text-slate-400 leading-relaxed">{rec.reasoning}</p>
+              </div>
+            </>
+          )}
         </div>
 
         <footer className="text-center text-xs text-muted-foreground py-4 border-t border-border">
