@@ -30,7 +30,7 @@ export const FOREX_PAIRS: { symbol: string; pair: string; flag: string }[] = [
   { symbol: 'AUDUSD=X', pair: 'AUD/USD', flag: '🇦🇺' },
   { symbol: 'USDCHF=X', pair: 'USD/CHF', flag: '🇨🇭' },
   { symbol: 'USDCNY=X', pair: 'USD/CNY', flag: '🇨🇳' },
-  { symbol: 'USDMXN=X', pair: 'USD/MXN', flag: '🇲🇽' },
+  { symbol: 'USDILS=X', pair: 'USD/ILS', flag: '🇮🇱' },
 ];
 
 async function yfGet(path: string, host: '1' | '2' = '1', params: Record<string, string> = {}): Promise<any> {
