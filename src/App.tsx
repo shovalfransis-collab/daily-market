@@ -32,25 +32,6 @@ export default function App() {
   const [selectedStock, setSelectedStock] = useState<{ symbol: string; name: string } | null>(null);
   const prevMarketOpen = useRef(false);
 
-  useEffect(() => {
-    const html = document.documentElement;
-    html.classList.remove('theme-daylight', 'theme-terminal', 'theme-aurora', 'theme-gold');
-    if (theme !== 'obsidian') html.classList.add(`theme-${theme}`);
-    localStorage.setItem('theme', theme);
-  }, [theme]);
-
-  // Auto-refresh every 15 min during market hours; trigger once on market open
-  useEffect(() => {
-    const tick = () => {
-      const open = isMarketOpen();
-      if (open && !prevMarketOpen.current) load(); // just opened
-      prevMarketOpen.current = open;
-    };
-    const minuteId = setInterval(tick, 60_000);
-    const refreshId = setInterval(() => { if (isMarketOpen()) load(); }, 15 * 60_000);
-    return () => { clearInterval(minuteId); clearInterval(refreshId); };
-  }, [load]);
-
   const load = useCallback(async (bust = false) => {
     try {
       setError(null);
@@ -63,6 +44,25 @@ export default function App() {
       setRefreshing(false);
     }
   }, []);
+
+  useEffect(() => {
+    const html = document.documentElement;
+    html.classList.remove('theme-daylight', 'theme-terminal', 'theme-aurora', 'theme-gold');
+    if (theme !== 'obsidian') html.classList.add(`theme-${theme}`);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  // Auto-refresh every 15 min during market hours; trigger once on market open
+  useEffect(() => {
+    const tick = () => {
+      const open = isMarketOpen();
+      if (open && !prevMarketOpen.current) load();
+      prevMarketOpen.current = open;
+    };
+    const minuteId = setInterval(tick, 60_000);
+    const refreshId = setInterval(() => { if (isMarketOpen()) load(); }, 15 * 60_000);
+    return () => { clearInterval(minuteId); clearInterval(refreshId); };
+  }, [load]);
 
   useEffect(() => { load(); }, [load]);
 
