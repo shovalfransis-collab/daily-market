@@ -10,7 +10,7 @@ import {
 import { fetchChartRange, fetchQuoteSummary } from '../lib/yahooFinance';
 import { formatPrice, formatPercent, formatMarketCap, formatVolume, colorClass } from '../lib/utils';
 import { FinancialMetrics, AIScores } from '../types';
-import { generateAnalysis, outlookColor, outlookBg, valuationColor } from '../lib/stockAnalysis';
+import { generateAnalysis, generateFromRec, outlookColor, outlookBg, valuationColor } from '../lib/stockAnalysis';
 
 interface Props {
   symbol: string;
@@ -376,8 +376,9 @@ export function StockDetailPage({ symbol, name, onBack }: Props) {
   const liveDesc   = metrics?.description;
   const description = liveDesc || staticDesc;
   const displayName = metrics?.longName || metrics?.shortName || name || symbol.replace('^', '');
-  const aiScores   = metrics ? computeAIScores(metrics, currentPrice.price) : null;
-  const analysis   = metrics ? generateAnalysis(metrics, currentPrice.price, displayName) : null;
+  const aiScores       = metrics ? computeAIScores(metrics, currentPrice.price) : null;
+  const liveAnalysis   = metrics ? generateAnalysis(metrics, currentPrice.price, displayName) : null;
+  const analysis       = liveAnalysis ?? (!metricsLoading ? generateFromRec(rec, displayName, symbol) : null);
 
   const high = chartData.length ? Math.max(...chartData.map(p => p.high || p.close)) : 0;
   const low  = chartData.length ? Math.min(...chartData.filter(p => p.low > 0).map(p => p.low)) : 0;
@@ -654,14 +655,14 @@ export function StockDetailPage({ symbol, name, onBack }: Props) {
         </div>
 
         {/* ── Investment Analysis ────────────────────────────────── */}
-        {(metricsLoading || analysis) && (
+        {(metricsLoading || metrics || RECOMMENDATIONS[symbol]) && (
           <div className="rounded-xl border border-border bg-card p-5 mb-4">
             <div className="flex items-center gap-2 mb-5">
               <h2 className="text-sm font-semibold text-slate-100 uppercase tracking-wide">Investment Analysis</h2>
               <span className="text-xs text-muted-foreground">— algorithmic, not financial advice</span>
             </div>
 
-            {metricsLoading ? (
+            {metricsLoading && !analysis ? (
               <div className="space-y-3">
                 <Skeleton className="h-16" />
                 <div className="grid grid-cols-2 gap-4 mt-4">

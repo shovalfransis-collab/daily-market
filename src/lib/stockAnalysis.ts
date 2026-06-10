@@ -313,3 +313,120 @@ export function valuationColor(v: ValuationVerdict): string {
   if (v === 'Overvalued') return 'text-down';
   return 'text-purple-400';
 }
+
+// ── Static fallback: convert a Rec (from RECOMMENDATIONS dict) ────────────
+
+type LegacySignal = 'strong-buy' | 'buy' | 'neutral' | 'sell' | 'strong-sell';
+interface LegacyRec { longTerm: LegacySignal; shortTerm: LegacySignal; reasoning: string }
+
+function legacyToOutlook(s: LegacySignal): OutlookSignal {
+  if (s === 'strong-buy') return 'Bullish';
+  if (s === 'buy')        return 'Cautiously Bullish';
+  if (s === 'sell')       return 'Cautiously Bearish';
+  if (s === 'strong-sell') return 'Bearish';
+  return 'Neutral';
+}
+
+const INDEX_SYMBOLS = new Set(['^GSPC','^IXIC','^DJI','^RUT','^VIX','^TNX']);
+
+export function generateFromRec(rec: LegacyRec, name: string, symbol: string): StockAnalysis {
+  const ltSignal = legacyToOutlook(rec.longTerm);
+  const stSignal = legacyToOutlook(rec.shortTerm);
+  const isIndex = INDEX_SYMBOLS.has(symbol) || symbol.startsWith('^');
+  const isETF   = !isIndex && (symbol.startsWith('XL') || ['GLD','SLV','USO','UNG','COPX','XME','WEAT','CORN','SOYB','WOOD','LIT'].includes(symbol));
+
+  // ── Thesis ──────────────────────────────────────────────────────────────
+  const thesis = rec.reasoning;
+
+  // ── Bull Case ────────────────────────────────────────────────────────────
+  const bullCase: string[] = [];
+  if (isIndex) {
+    if (ltSignal === 'Bullish' || ltSignal === 'Cautiously Bullish') {
+      bullCase.push(`Historically, ${name} has delivered positive long-term returns through every major recession and market cycle, rewarding patient investors who stayed invested.`);
+    }
+    bullCase.push('Dollar-cost averaging into broad indices remains one of the highest-probability wealth-building strategies available to retail investors.');
+    bullCase.push('Central bank and government policy tools (rate cuts, QE, fiscal stimulus) have consistently provided a floor under equities during severe downturns.');
+    if (stSignal === 'Bullish' || stSignal === 'Cautiously Bullish') {
+      bullCase.push('Near-term earnings momentum and economic data support continued equity appreciation in the current cycle.');
+    } else {
+      bullCase.push('Any near-term pullback creates an opportunity to accumulate at better prices with the same long-term fundamentals intact.');
+    }
+  } else if (isETF) {
+    if (ltSignal === 'Bullish' || ltSignal === 'Cautiously Bullish') {
+      bullCase.push(`${name} offers diversified sector exposure with low cost and high liquidity — reducing single-stock risk while capturing the sector's tailwinds.`);
+    }
+    bullCase.push('ETF structure provides instant diversification, tax efficiency, and daily liquidity that individual stock positions cannot match.');
+    bullCase.push('Sector-level thematic trends (AI, energy transition, healthcare innovation) create multi-year growth tailwinds for the underlying holdings.');
+    if (stSignal === 'Bullish' || stSignal === 'Cautiously Bullish') {
+      bullCase.push('Current price momentum and relative strength suggest institutional rotation into this sector is underway.');
+    }
+  } else {
+    bullCase.push(`${name} represents exposure to a specific market segment with defined characteristics and historical performance patterns.`);
+    bullCase.push('Systematic accumulation through market cycles has historically rewarded disciplined long-term investors.');
+  }
+
+  // ── Bear Case ────────────────────────────────────────────────────────────
+  const bearCase: string[] = [];
+  if (isIndex) {
+    bearCase.push('Broad indices carry full market risk — during bear markets, even diversified holdings can fall 30–50% with limited short-term recovery visibility.');
+    bearCase.push('Elevated valuations relative to historical averages compress future expected returns, even if the long-term trend remains intact.');
+    if (stSignal === 'Neutral' || stSignal === 'Cautiously Bearish' || stSignal === 'Bearish') {
+      bearCase.push('Near-term technical and sentiment signals suggest caution — momentum is weak and institutional positioning is not yet supportive.');
+    }
+    bearCase.push('Geopolitical shocks, policy errors, or credit events can trigger sharp drawdowns that test investor conviction and force capitulation at lows.');
+  } else if (isETF) {
+    bearCase.push('ETFs concentrate risk within a single sector — a sector-specific shock (regulation, demand collapse, commodity crash) can create outsized losses versus a diversified portfolio.');
+    bearCase.push('Top-heavy weighting in sector ETFs often means a few large-cap names drive the majority of returns, reducing the diversification benefit.');
+    if (stSignal === 'Cautiously Bearish' || stSignal === 'Bearish') {
+      bearCase.push('Near-term price action is weak — the sector is showing relative underperformance versus the broader market.');
+    }
+    bearCase.push('Rising interest rates tend to compress valuations in rate-sensitive sectors and reduce the attractiveness of dividend-paying alternatives.');
+  } else {
+    bearCase.push('All instruments carry market risk — no historical track record guarantees future returns.');
+    bearCase.push('Macro deterioration, policy shifts, or sector-specific disruption can override fundamental analysis.');
+  }
+
+  // ── Valuation ────────────────────────────────────────────────────────────
+  const valuationReasoning = isIndex
+    ? 'Traditional P/E-based valuation metrics are less meaningful for broad indices; instead, analysts use Shiller CAPE, price-to-sales, and earnings yield relative to bond yields. These metrics indicate whether the index is expensive or cheap relative to history.'
+    : isETF
+    ? 'ETF valuation is driven by the aggregate P/E and P/B of the underlying holdings rather than a single-company metric. Sector rotation, macro themes, and relative-to-market valuation are more relevant than absolute multiples.'
+    : 'Insufficient financial data to perform a detailed valuation analysis. Assess this instrument based on its historical performance, macro context, and correlation to your existing portfolio.';
+
+  // ── Short / Long Term ────────────────────────────────────────────────────
+  const stBullBear = stSignal === 'Bullish' || stSignal === 'Cautiously Bullish'
+    ? 'Short-term momentum is supportive. Positioning can be offensive — new capital can be deployed at current levels with defined risk parameters.'
+    : stSignal === 'Bearish' || stSignal === 'Cautiously Bearish'
+    ? 'Short-term signals suggest patience is warranted. Consider waiting for a stabilization in price action or a catalyst before adding exposure.'
+    : 'Short-term direction lacks a clear catalyst. Tactical positions are not strongly favored in either direction — maintain existing allocations and watch for a decisive move.';
+
+  const ltBullBear = ltSignal === 'Bullish' || ltSignal === 'Cautiously Bullish'
+    ? 'Long-term structural case is intact. Patient accumulation on weakness is the recommended approach — the 3-5 year risk/reward is favorable.'
+    : ltSignal === 'Bearish' || ltSignal === 'Cautiously Bearish'
+    ? 'Long-term outlook has meaningful headwinds that could impair compounding. Size any position conservatively and set clear exit criteria.'
+    : 'Long-term returns will largely track the underlying macro and sector dynamics. No strong outperformance or underperformance expected — use as a portfolio diversifier rather than a return driver.';
+
+  // ── Catalysts & Risks ────────────────────────────────────────────────────
+  const catalysts: string[] = isIndex
+    ? ['Federal Reserve rate cuts reducing the discount rate on future earnings', 'Strong employment and consumer spending data supporting earnings growth', 'AI and productivity gains driving corporate margin expansion', 'Geopolitical resolution reducing risk premiums']
+    : isETF
+    ? ['Sector-specific earnings beats exceeding analyst expectations', 'Policy support or deregulation benefiting the sector', 'Institutional rotation into the sector as macro conditions evolve', 'Thematic tailwinds (AI, energy transition, demographics) accelerating adoption']
+    : ['Positive earnings surprise or guidance raise', 'Macro improvement in the relevant underlying market', 'Capital return announcements or strategic transactions'];
+
+  const risks: string[] = isIndex
+    ? ['Recession or significant GDP contraction compressing earnings', 'Federal Reserve policy error (rates too high for too long)', 'Credit market stress triggering broad deleveraging', 'Geopolitical escalation creating sustained risk-off environment']
+    : isETF
+    ? ['Sector rotation away from the fund\'s theme due to macro shifts', 'Concentration risk — top holdings accounting for outsized weighting', 'Rising rates increasing the opportunity cost vs fixed income', 'Commodity, regulatory, or competitive disruption specific to the sector']
+    : ['Macro deterioration affecting the underlying instrument', 'Liquidity risk during periods of market stress', 'Policy or regulatory changes impacting the sector'];
+
+  return {
+    thesis,
+    bullCase:  bullCase.slice(0, 4),
+    bearCase:  bearCase.slice(0, 4),
+    valuation: { verdict: 'Fairly Valued', reasoning: valuationReasoning },
+    shortTerm: { signal: stSignal, text: `${stBullBear} ${rec.reasoning}` },
+    longTerm:  { signal: ltSignal, text: `${ltBullBear} ${rec.reasoning}` },
+    catalysts: catalysts.slice(0, 4),
+    risks:     risks.slice(0, 4),
+  };
+}
