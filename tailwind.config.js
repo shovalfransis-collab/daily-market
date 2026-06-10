@@ -5,15 +5,15 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: '#0a0a0f',
-        card: '#111118',
-        border: '#1e1e2e',
-        up: '#22c55e',
-        down: '#ef4444',
-        neutral: '#94a3b8',
-        accent: '#6366f1',
-        muted: '#1a1a2e',
-        'muted-foreground': '#64748b',
+        background: 'var(--background)',
+        card: 'var(--card)',
+        border: 'var(--border)',
+        up: 'var(--up)',
+        down: 'var(--down)',
+        neutral: 'var(--neutral)',
+        accent: 'var(--accent)',
+        muted: 'var(--muted)',
+        'muted-foreground': 'var(--muted-foreground)',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

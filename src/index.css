@@ -2,13 +2,102 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Obsidian (default) ───────────────────────────── */
 :root {
   --background: #0a0a0f;
   --card: #111118;
   --border: #1e1e2e;
   --up: #22c55e;
   --down: #ef4444;
+  --muted: #1a1a2e;
+  --muted-foreground: #64748b;
+  --accent: #6366f1;
+  --neutral: #94a3b8;
+  --text-body: #e2e8f0;
+  --text-1: #f1f5f9;
+  --text-2: #e2e8f0;
+  --text-3: #cbd5e1;
+  --text-4: #94a3b8;
 }
+
+/* ── Daylight ─────────────────────────────────────── */
+html.theme-daylight {
+  --background: #f1f5f9;
+  --card: #ffffff;
+  --border: #e2e8f0;
+  --up: #16a34a;
+  --down: #dc2626;
+  --muted: #f8fafc;
+  --muted-foreground: #64748b;
+  --accent: #6366f1;
+  --neutral: #64748b;
+  --text-body: #0f172a;
+  --text-1: #0f172a;
+  --text-2: #1e293b;
+  --text-3: #334155;
+  --text-4: #475569;
+}
+
+/* ── Terminal ─────────────────────────────────────── */
+html.theme-terminal {
+  --background: #000000;
+  --card: #0a0f0a;
+  --border: #1a3a1a;
+  --up: #00ff41;
+  --down: #ff4444;
+  --muted: #0d1a0d;
+  --muted-foreground: #4a8c4a;
+  --accent: #00ff41;
+  --neutral: #4a8c4a;
+  --text-body: #00cc33;
+  --text-1: #00ff41;
+  --text-2: #00cc33;
+  --text-3: #00aa29;
+  --text-4: #4a8c4a;
+}
+
+/* ── Aurora ───────────────────────────────────────── */
+html.theme-aurora {
+  --background: #0d0a1a;
+  --card: #13102a;
+  --border: #2a1f4a;
+  --up: #34d399;
+  --down: #f87171;
+  --muted: #1a1535;
+  --muted-foreground: #7c6fa0;
+  --accent: #a78bfa;
+  --neutral: #7c6fa0;
+  --text-body: #e2d9f3;
+  --text-1: #ede9f8;
+  --text-2: #ddd6f0;
+  --text-3: #c4b8e4;
+  --text-4: #9d8ec4;
+}
+
+/* ── Gold ─────────────────────────────────────────── */
+html.theme-gold {
+  --background: #0c0800;
+  --card: #181100;
+  --border: #2e2200;
+  --up: #f59e0b;
+  --down: #ef4444;
+  --muted: #1f1500;
+  --muted-foreground: #92740a;
+  --accent: #f59e0b;
+  --neutral: #92740a;
+  --text-body: #fde68a;
+  --text-1: #fef3c7;
+  --text-2: #fde68a;
+  --text-3: #fcd34d;
+  --text-4: #d97706;
+}
+
+/* ── Apply text vars globally ─────────────────────── */
+body { color: var(--text-body); }
+.text-slate-100 { color: var(--text-1) !important; }
+.text-slate-200 { color: var(--text-2) !important; }
+.text-slate-300 { color: var(--text-3) !important; }
+.text-slate-400 { color: var(--text-4) !important; }
 
 * {
   box-sizing: border-box;
@@ -16,7 +105,6 @@
 
 body {
   background-color: var(--background);
-  color: #e2e8f0;
   font-family: 'Inter', system-ui, sans-serif;
   font-weight: 400;
   margin: 0;
@@ -24,17 +112,21 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+html.theme-terminal body {
+  font-family: 'Courier New', 'Consolas', monospace;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0a0a0f;
+  background: var(--background);
 }
 ::-webkit-scrollbar-thumb {
-  background: #1e1e2e;
+  background: var(--border);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #2a2a3e;
+  background: var(--muted-foreground);
 }

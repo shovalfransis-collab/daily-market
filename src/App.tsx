@@ -16,8 +16,16 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'obsidian');
   const [showCalculator, setShowCalculator] = useState(false);
   const [selectedStock, setSelectedStock] = useState<{ symbol: string; name: string } | null>(null);
+
+  useEffect(() => {
+    const html = document.documentElement;
+    html.classList.remove('theme-daylight', 'theme-terminal', 'theme-aurora', 'theme-gold');
+    if (theme !== 'obsidian') html.classList.add(`theme-${theme}`);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
 
   const load = useCallback(async (bust = false) => {
     try {
@@ -72,14 +80,37 @@ export default function App() {
             <h1 className="text-2xl font-medium text-slate-100 tracking-tight">Market Daily</h1>
             <p className="text-sm text-muted-foreground mt-0.5">{dateStr}</p>
           </div>
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing || loading}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted border border-border text-sm text-slate-300 hover:bg-[#1e1e2e] transition-colors disabled:opacity-50"
-          >
-            <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
-            {refreshing ? 'Refreshing…' : 'Refresh'}
-          </button>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-muted border border-border">
+              {([
+                { id: 'obsidian', color: '#0a0a0f', ring: '#6366f1', label: 'Obsidian' },
+                { id: 'daylight', color: '#f1f5f9', ring: '#6366f1', label: 'Daylight' },
+                { id: 'terminal', color: '#000000', ring: '#00ff41', label: 'Terminal' },
+                { id: 'aurora',   color: '#0d0a1a', ring: '#a78bfa', label: 'Aurora'   },
+                { id: 'gold',     color: '#0c0800', ring: '#f59e0b', label: 'Gold'     },
+              ] as const).map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => setTheme(t.id)}
+                  title={t.label}
+                  className="w-5 h-5 rounded-full border-2 transition-transform hover:scale-110"
+                  style={{
+                    backgroundColor: t.color,
+                    borderColor: theme === t.id ? t.ring : '#334155',
+                    boxShadow: theme === t.id ? `0 0 6px ${t.ring}` : 'none',
+                  }}
+                />
+              ))}
+            </div>
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing || loading}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted border border-border text-sm text-slate-300 hover:opacity-80 transition-opacity disabled:opacity-50"
+            >
+              <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
+              {refreshing ? 'Refreshing…' : 'Refresh'}
+            </button>
+          </div>
         </header>
 
         {/* Calculator CTA Banner */}
