@@ -26,8 +26,8 @@ function Sparkline({ data, positive }: { data: { date: string; close: number }[]
           isAnimationActive={false}
         />
         <Tooltip
-          contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 11 }}
-          labelStyle={{ color: 'var(--muted-foreground)' }}
+          contentStyle={{ background: '#111118', border: '1px solid #1e1e2e', borderRadius: 6, fontSize: 11 }}
+          labelStyle={{ color: '#64748b' }}
           itemStyle={{ color }}
           formatter={(v: number) => [formatPrice(v), '']}
           labelFormatter={() => ''}

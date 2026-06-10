@@ -8,32 +8,7 @@
   --border: #1e1e2e;
   --up: #22c55e;
   --down: #ef4444;
-  --muted: #1a1a2e;
-  --muted-foreground: #64748b;
-  --accent: #6366f1;
-  --neutral: #94a3b8;
 }
-
-html.light {
-  --background: #f1f5f9;
-  --card: #ffffff;
-  --border: #e2e8f0;
-  --up: #16a34a;
-  --down: #dc2626;
-  --muted: #f8fafc;
-  --muted-foreground: #64748b;
-  --accent: #6366f1;
-  --neutral: #64748b;
-}
-
-html.light body {
-  color: #0f172a;
-}
-
-html.light .text-slate-100 { color: #0f172a !important; }
-html.light .text-slate-200 { color: #1e293b !important; }
-html.light .text-slate-300 { color: #334155 !important; }
-html.light .text-slate-400 { color: #475569 !important; }
 
 * {
   box-sizing: border-box;
