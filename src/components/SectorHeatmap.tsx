@@ -3,6 +3,7 @@ import { SectorData } from '../types';
 interface Props {
   sectors: SectorData[];
   loading: boolean;
+  onSymbolClick?: (symbol: string, name: string) => void;
 }
 
 function sectorTileColor(pct: number): string {
@@ -16,14 +17,15 @@ function sectorTileColor(pct: number): string {
   }
 }
 
-function SectorTile({ sector }: { sector: SectorData }) {
+function SectorTile({ sector, onClick }: { sector: SectorData; onClick?: () => void }) {
   const bg = sectorTileColor(sector.changePercent);
   const positive = sector.changePercent >= 0;
 
   return (
     <div
-      className="rounded-lg p-3 flex flex-col items-center justify-center text-center min-h-[80px] transition-all hover:opacity-90 cursor-default"
+      className={`rounded-lg p-3 flex flex-col items-center justify-center text-center min-h-[80px] transition-all hover:opacity-80 ${onClick ? 'cursor-pointer' : 'cursor-default'}`}
       style={{ backgroundColor: bg }}
+      onClick={onClick}
     >
       <p className="text-xs font-medium text-white/90 leading-tight mb-1">{sector.name}</p>
       <p className="text-xs text-white/60">{sector.etf}</p>
@@ -38,7 +40,7 @@ function SkeletonTile() {
   return <div className="rounded-lg bg-muted animate-pulse min-h-[80px]" />;
 }
 
-export function SectorHeatmap({ sectors, loading }: Props) {
+export function SectorHeatmap({ sectors, loading, onSymbolClick }: Props) {
   return (
     <section>
       <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-3">
@@ -47,7 +49,12 @@ export function SectorHeatmap({ sectors, loading }: Props) {
       <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
         {loading
           ? [...Array(11)].map((_, i) => <SkeletonTile key={i} />)
-          : sectors.map(s => <SectorTile key={s.etf} sector={s} />)}
+          : sectors.map(s => (
+              <SectorTile
+                key={s.etf} sector={s}
+                onClick={onSymbolClick ? () => onSymbolClick(s.etf, s.name) : undefined}
+              />
+            ))}
       </div>
     </section>
   );

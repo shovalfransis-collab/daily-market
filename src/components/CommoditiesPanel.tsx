@@ -5,6 +5,7 @@ import { formatPrice, formatPercent, colorClass } from '../lib/utils';
 interface Props {
   commodities: StockQuote[];
   loading: boolean;
+  onSymbolClick?: (symbol: string, name: string) => void;
 }
 
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -21,12 +22,15 @@ const ICON_MAP: Record<string, React.ElementType> = {
   LIT: Battery,
 };
 
-function CommodityCard({ quote }: { quote: StockQuote }) {
+function CommodityCard({ quote, onClick }: { quote: StockQuote; onClick?: () => void }) {
   const positive = quote.changePercent >= 0;
   const Icon = ICON_MAP[quote.symbol] ?? Gem;
 
   return (
-    <div className={`rounded-xl border p-4 flex-shrink-0 w-40 ${positive ? 'border-up/20 bg-up/5' : 'border-down/20 bg-down/5'}`}>
+    <div
+      className={`rounded-xl border p-4 flex-shrink-0 w-40 ${positive ? 'border-up/20 bg-up/5' : 'border-down/20 bg-down/5'} ${onClick ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+      onClick={onClick}
+    >
       <div className="flex items-center gap-2 mb-3">
         <div className={`p-1.5 rounded-lg ${positive ? 'bg-up/10' : 'bg-down/10'}`}>
           <Icon size={14} className={positive ? 'text-up' : 'text-down'} />
@@ -42,7 +46,7 @@ function CommodityCard({ quote }: { quote: StockQuote }) {
   );
 }
 
-export function CommoditiesPanel({ commodities, loading }: Props) {
+export function CommoditiesPanel({ commodities, loading, onSymbolClick }: Props) {
   return (
     <section>
       <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-3">
@@ -59,7 +63,12 @@ export function CommoditiesPanel({ commodities, loading }: Props) {
                   <div className="h-3 bg-muted rounded w-12" />
                 </div>
               ))
-            : commodities.map(c => <CommodityCard key={c.symbol} quote={c} />)}
+            : commodities.map(c => (
+                <CommodityCard
+                  key={c.symbol} quote={c}
+                  onClick={onSymbolClick ? () => onSymbolClick(c.symbol, c.name) : undefined}
+                />
+              ))}
         </div>
       </div>
     </section>

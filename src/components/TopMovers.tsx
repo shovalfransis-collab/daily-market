@@ -6,14 +6,18 @@ interface Props {
   gainers: StockQuote[];
   losers: StockQuote[];
   loading: boolean;
+  onSymbolClick?: (symbol: string, name: string) => void;
 }
 
-function MoverRow({ quote, maxPct }: { quote: StockQuote; maxPct: number }) {
+function MoverRow({ quote, maxPct, onClick }: { quote: StockQuote; maxPct: number; onClick?: () => void }) {
   const positive = quote.changePercent >= 0;
   const barWidth = Math.min(100, (Math.abs(quote.changePercent) / Math.max(maxPct, 1)) * 100);
 
   return (
-    <div className="flex items-center gap-3 py-2.5 border-b border-border/50 last:border-0">
+    <div
+      className={`flex items-center gap-3 py-2.5 border-b border-border/50 last:border-0 ${onClick ? 'cursor-pointer hover:bg-muted/40 rounded px-1 -mx-1 transition-colors' : ''}`}
+      onClick={onClick}
+    >
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2 mb-1">
           <span className="text-sm font-medium text-slate-100">{quote.symbol}</span>
@@ -37,15 +41,10 @@ function MoverRow({ quote, maxPct }: { quote: StockQuote; maxPct: number }) {
 }
 
 function Column({
-  title,
-  quotes,
-  icon: Icon,
-  loading,
+  title, quotes, icon: Icon, loading, onSymbolClick,
 }: {
-  title: string;
-  quotes: StockQuote[];
-  icon: typeof TrendingUp;
-  loading: boolean;
+  title: string; quotes: StockQuote[]; icon: typeof TrendingUp;
+  loading: boolean; onSymbolClick?: (symbol: string, name: string) => void;
 }) {
   const maxPct = Math.max(...quotes.map(q => Math.abs(q.changePercent)), 1);
 
@@ -72,7 +71,10 @@ function Column({
       ) : (
         <div className="overflow-y-auto max-h-80">
           {quotes.map(q => (
-            <MoverRow key={q.symbol} quote={q} maxPct={maxPct} />
+            <MoverRow
+              key={q.symbol} quote={q} maxPct={maxPct}
+              onClick={onSymbolClick ? () => onSymbolClick(q.symbol, q.name) : undefined}
+            />
           ))}
         </div>
       )}
@@ -80,15 +82,15 @@ function Column({
   );
 }
 
-export function TopMovers({ gainers, losers, loading }: Props) {
+export function TopMovers({ gainers, losers, loading, onSymbolClick }: Props) {
   return (
     <section>
       <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-3">
         Top Movers
       </h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Column title="Top Gainers" quotes={gainers} icon={TrendingUp} loading={loading} />
-        <Column title="Top Losers" quotes={losers} icon={TrendingDown} loading={loading} />
+        <Column title="Top Gainers" quotes={gainers} icon={TrendingUp} loading={loading} onSymbolClick={onSymbolClick} />
+        <Column title="Top Losers" quotes={losers} icon={TrendingDown} loading={loading} onSymbolClick={onSymbolClick} />
       </div>
     </section>
   );
