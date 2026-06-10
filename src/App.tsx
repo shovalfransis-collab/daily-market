@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { RefreshCw, TrendingUp } from 'lucide-react';
 import { fetchNewsletter } from './lib/api';
 import { MarketSummary } from './types';
@@ -7,18 +7,30 @@ import { MarketOverview } from './components/MarketOverview';
 import { TopMovers } from './components/TopMovers';
 import { SectorHeatmap } from './components/SectorHeatmap';
 import { CommoditiesPanel } from './components/CommoditiesPanel';
+import { CurrencyPanel } from './components/CurrencyPanel';
 import { EarningsTable } from './components/EarningsTable';
 import { YoungRicherCalculator } from './components/YoungRicherCalculator';
 import { StockDetailPage } from './components/StockDetailPage';
+import { ThemePicker, ThemeId } from './components/ThemePicker';
+import { GlobalSearch } from './components/GlobalSearch';
+
+function isMarketOpen(): boolean {
+  const et = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  const day = et.getDay();
+  if (day === 0 || day === 6) return false;
+  const mins = et.getHours() * 60 + et.getMinutes();
+  return mins >= 9 * 60 + 30 && mins < 16 * 60;
+}
 
 export default function App() {
   const [data, setData] = useState<MarketSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'obsidian');
+  const [theme, setTheme] = useState<ThemeId>(() => (localStorage.getItem('theme') as ThemeId) || 'obsidian');
   const [showCalculator, setShowCalculator] = useState(false);
   const [selectedStock, setSelectedStock] = useState<{ symbol: string; name: string } | null>(null);
+  const prevMarketOpen = useRef(false);
 
   useEffect(() => {
     const html = document.documentElement;
@@ -26,6 +38,18 @@ export default function App() {
     if (theme !== 'obsidian') html.classList.add(`theme-${theme}`);
     localStorage.setItem('theme', theme);
   }, [theme]);
+
+  // Auto-refresh every 15 min during market hours; trigger once on market open
+  useEffect(() => {
+    const tick = () => {
+      const open = isMarketOpen();
+      if (open && !prevMarketOpen.current) load(); // just opened
+      prevMarketOpen.current = open;
+    };
+    const minuteId = setInterval(tick, 60_000);
+    const refreshId = setInterval(() => { if (isMarketOpen()) load(); }, 15 * 60_000);
+    return () => { clearInterval(minuteId); clearInterval(refreshId); };
+  }, [load]);
 
   const load = useCallback(async (bust = false) => {
     try {
@@ -75,42 +99,21 @@ export default function App() {
     <div className="min-h-screen bg-background text-slate-200">
       <div className="max-w-screen-xl mx-auto px-4 py-6">
         {/* Header */}
-        <header className="flex items-center justify-between mb-4">
-          <div>
+        <header className="flex items-center gap-3 mb-4 flex-wrap">
+          <div className="mr-auto">
             <h1 className="text-2xl font-medium text-slate-100 tracking-tight">Market Daily</h1>
             <p className="text-sm text-muted-foreground mt-0.5">{dateStr}</p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-muted border border-border">
-              {([
-                { id: 'obsidian', color: '#0a0a0f', ring: '#6366f1', label: 'Obsidian' },
-                { id: 'daylight', color: '#f1f5f9', ring: '#6366f1', label: 'Daylight' },
-                { id: 'terminal', color: '#000000', ring: '#00ff41', label: 'Terminal' },
-                { id: 'aurora',   color: '#0d0a1a', ring: '#a78bfa', label: 'Aurora'   },
-                { id: 'gold',     color: '#0c0800', ring: '#f59e0b', label: 'Gold'     },
-              ] as const).map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => setTheme(t.id)}
-                  title={t.label}
-                  className="w-5 h-5 rounded-full border-2 transition-transform hover:scale-110"
-                  style={{
-                    backgroundColor: t.color,
-                    borderColor: theme === t.id ? t.ring : '#334155',
-                    boxShadow: theme === t.id ? `0 0 6px ${t.ring}` : 'none',
-                  }}
-                />
-              ))}
-            </div>
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing || loading}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted border border-border text-sm text-slate-300 hover:opacity-80 transition-opacity disabled:opacity-50"
-            >
-              <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
-              {refreshing ? 'Refreshing…' : 'Refresh'}
-            </button>
-          </div>
+          <GlobalSearch onNavigate={handleSymbolClick} />
+          <ThemePicker current={theme} onChange={setTheme} />
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing || loading}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted border border-border text-sm text-slate-300 hover:opacity-80 transition-opacity disabled:opacity-50"
+          >
+            <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
+            {refreshing ? 'Refreshing…' : 'Refresh'}
+          </button>
         </header>
 
         {/* Calculator CTA Banner */}
@@ -163,6 +166,11 @@ export default function App() {
         {/* Index cards + sparklines */}
         <div className="mb-6">
           <MarketOverview indices={data?.indices ?? []} loading={loading} onSymbolClick={handleSymbolClick} />
+        </div>
+
+        {/* Currencies */}
+        <div className="mb-6">
+          <CurrencyPanel currencies={data?.currencies ?? []} loading={loading} lastUpdated={data?.date ?? null} />
         </div>
 
         {/* Top movers */}
