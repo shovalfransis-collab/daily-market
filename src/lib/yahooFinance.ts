@@ -53,9 +53,53 @@ async function fetchChart(symbol: string, range = '1d'): Promise<any> {
 
 export async function fetchChartRange(symbol: string, range: string, interval: string): Promise<any> {
   const enc = encodeURIComponent(symbol);
-  const intraday = range === '1d' || range === '5d';
-  const params: Record<string, string> = { range, interval };
-  if (!intraday) { params.includeAdjustedClose = 'true'; params.events = 'div,splits'; }
+  
+  let params: Record<string, string>;
+  
+  if (range === '1d') {
+    // For 1D intraday only, use range + interval
+    params = { range, interval };
+  } else {
+    // For all other ranges (5d, 1mo, 6mo, ytd, 1y, 5y, max), use period1/period2
+    const now = Math.floor(Date.now() / 1000);
+    let period1: number;
+    
+    switch (range) {
+      case '5d':
+        period1 = now - (5 * 86400);
+        break;
+      case '1mo':
+        period1 = now - (30 * 86400);
+        break;
+      case '6mo':
+        period1 = now - (180 * 86400);
+        break;
+      case 'ytd': {
+        const year = new Date().getFullYear();
+        const ytdStart = new Date(year, 0, 1);
+        period1 = Math.floor(ytdStart.getTime() / 1000);
+        break;
+      }
+      case '1y':
+        period1 = now - (365 * 86400);
+        break;
+      case '5y':
+        period1 = now - (5 * 365 * 86400);
+        break;
+      case 'max':
+        period1 = 0; // Very old date
+        break;
+      default:
+        period1 = now - (30 * 86400);
+    }
+    
+    params = { 
+      period1: period1.toString(),
+      period2: now.toString(),
+      interval
+    };
+  }
+  
   return yfGet(`/v8/finance/chart/${enc}`, '1', params);
 }
 
@@ -84,10 +128,16 @@ function parseHistory(data: any, days = 7): PricePoint[] {
     const result = data?.chart?.result?.[0];
     if (!result) return [];
     const timestamps: number[] = result.timestamp ?? [];
-    const closes: number[] = result.indicators?.quote?.[0]?.close ?? [];
+    const rawCloses: (number | null)[] = result.indicators?.quote?.[0]?.close ?? [];
+    const adjCloses: (number | null)[] = result.indicators?.adjclose?.[0]?.adjclose ?? [];
+    const closes = adjCloses.some(v => v != null && v > 0) ? adjCloses : rawCloses;
     return timestamps
-      .map((ts, i) => ({ date: new Date(ts * 1000).toISOString().split('T')[0], close: closes[i] ?? 0 }))
-      .filter(p => p.close > 0)
+      .map((ts, i) => {
+        const close = closes[i];
+        if (!ts || close == null || close <= 0) return null;
+        return { date: new Date(ts * 1000).toISOString().split('T')[0], close };
+      })
+      .filter((p): p is PricePoint => p !== null)
       .slice(-days);
   } catch {
     return [];

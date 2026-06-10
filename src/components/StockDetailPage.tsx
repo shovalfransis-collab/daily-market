@@ -346,6 +346,13 @@ export function StockDetailPage({ symbol, name, onBack }: Props) {
   const [showFullDesc, setShowFullDesc] = useState(false);
   const chartCache = useRef<Record<number, { points: ChartPoint[]; price: typeof currentPrice }>>({});
 
+  // Clear cache when symbol changes so we never serve another stock's data
+  useEffect(() => {
+    chartCache.current = {};
+    setChartData([]);
+    setCurrentPrice({ price: 0, change: 0, changePct: 0 });
+  }, [symbol]);
+
   // Fetch chart data
   useEffect(() => {
     let cancelled = false;
