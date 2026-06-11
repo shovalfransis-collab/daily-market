@@ -161,6 +161,7 @@ export interface MarketBreadth {
 export interface FearGreedScore {
   score: number;
   label: 'Extreme Fear' | 'Fear' | 'Neutral' | 'Greed' | 'Extreme Greed';
+  lastUpdated: string;
 }
 
 export interface MarketSummary {

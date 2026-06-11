@@ -24,7 +24,7 @@ function computeFearGreed(indexQuotes: StockQuote[], sectors: SectorData[]): Fea
     : score >= 25 ? 'Fear'
     : 'Extreme Fear';
 
-  return { score, label };
+  return { score, label, lastUpdated: new Date().toISOString() };
 }
 
 function dedupeBySymbol(quotes: StockQuote[]): StockQuote[] {

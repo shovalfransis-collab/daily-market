@@ -46,12 +46,12 @@ function IndexCard({ quote, onClick }: { quote: StockQuote; onClick?: () => void
       className={`rounded-xl border ${tintClass} p-4 flex flex-col gap-2 ${onClick ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
       onClick={onClick}
     >
-      <div className="flex items-start justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-2 min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{quote.symbol.replace('^', '')}</p>
           <p className="text-sm text-slate-400 mt-0.5 truncate">{quote.name}</p>
         </div>
-        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${positive ? 'text-up bg-up/10' : 'text-down bg-down/10'}`}>
+        <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${positive ? 'text-up bg-up/10' : 'text-down bg-down/10'}`}>
           {formatPercent(quote.changePercent)}
         </span>
       </div>

@@ -187,7 +187,7 @@ export async function fetchTopMovers(): Promise<{ gainers: StockQuote[]; losers:
 }
 
 export async function fetchCrypto(): Promise<StockQuote[]> {
-  const quotes = await fetchBatch(CRYPTO_SYMBOLS, false);
+  const quotes = await fetchBatch(CRYPTO_SYMBOLS, true);
   return quotes.map(q => ({ ...q, name: CRYPTO_NAMES[q.symbol] || q.name }));
 }
 
