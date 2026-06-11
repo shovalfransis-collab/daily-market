@@ -70,6 +70,13 @@ export function FearGreedMeter({ data, loading }: Props) {
           <span className="text-[10px] text-muted-foreground">Extreme Greed</span>
         </div>
       </div>
+
+      <div className="ml-auto shrink-0 text-right">
+        <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Last updated</p>
+        <p className="text-[11px] text-muted-foreground font-mono">
+          {new Date(data.lastUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+        </p>
+      </div>
     </div>
   );
 }
