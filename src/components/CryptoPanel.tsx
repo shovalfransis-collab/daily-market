@@ -1,3 +1,4 @@
+import { LineChart, Line, ResponsiveContainer, Tooltip } from 'recharts';
 import { StockQuote } from '../types';
 import { formatPrice, formatPercent, colorClass } from '../lib/utils';
 
@@ -17,6 +18,8 @@ const CRYPTO_ICONS: Record<string, string> = {
 function CryptoCard({ quote, onClick }: { quote: StockQuote; onClick?: () => void }) {
   const positive = quote.changePercent >= 0;
   const icon = CRYPTO_ICONS[quote.symbol] ?? '¤';
+  const color = positive ? '#22c55e' : '#ef4444';
+  const hasHistory = quote.history && quote.history.length >= 2;
 
   return (
     <div
@@ -33,6 +36,29 @@ function CryptoCard({ quote, onClick }: { quote: StockQuote; onClick?: () => voi
       <p className={`text-xs mt-0.5 font-medium tabular-nums ${colorClass(quote.changePercent)}`}>
         {formatPercent(quote.changePercent)}
       </p>
+      {hasHistory && (
+        <div className="mt-2">
+          <ResponsiveContainer width="100%" height={40}>
+            <LineChart data={quote.history} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
+              <Line
+                type="monotone"
+                dataKey="close"
+                stroke={color}
+                strokeWidth={1.5}
+                dot={false}
+                isAnimationActive={false}
+              />
+              <Tooltip
+                contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 11 }}
+                labelStyle={{ color: 'var(--muted-foreground)' }}
+                itemStyle={{ color }}
+                formatter={(v: number) => [formatPrice(v), '']}
+                labelFormatter={() => ''}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   );
 }
