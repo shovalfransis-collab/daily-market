@@ -42,6 +42,7 @@ export const FOREX_PAIRS: { symbol: string; pair: string; flag: string }[] = [
 async function yfGet(path: string, host: '1' | '2' = '1', params: Record<string, string> = {}): Promise<any> {
   const qs = new URLSearchParams({ ...params, _host: host, _path: path });
   const res = await fetch(`/api/yf?${qs}`, { headers: { Accept: 'application/json' } });
+  if (res.status === 404) return null;
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
@@ -334,7 +335,10 @@ const QS_MODULES = [
   'price',
 ].join(',');
 
+const NON_EQUITY_PATTERN = /^(\^|DX-Y|=X$|EURUSD|GBPUSD|USDJPY|USDCAD|AUDUSD|USDCHF|USDCNY|USDILS|-USD$)/;
+
 export async function fetchQuoteSummary(symbol: string): Promise<FinancialMetrics | null> {
+  if (NON_EQUITY_PATTERN.test(symbol)) return null;
   try {
     const enc = encodeURIComponent(symbol);
     const data = await yfGet(`/v11/finance/quoteSummary/${enc}`, '1', { modules: QS_MODULES });
