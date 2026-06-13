@@ -3,6 +3,7 @@ import {
   ArrowLeft, TrendingUp, TrendingDown, Minus,
   ExternalLink, Users, Globe, Building2,
 } from 'lucide-react';
+import { AIChatBox } from './AIChatBox';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, BarChart, Bar, Cell,
@@ -916,6 +917,17 @@ export function StockDetailPage({ symbol, name, onBack }: Props) {
               </div>
             </>
           )}
+        </div>
+
+        {/* ── AI Chatbox ─────────────────────────────────────────── */}
+        <div className="mb-6">
+          <AIChatBox
+            symbol={symbol}
+            name={displayName}
+            price={currentPrice.price}
+            changePct={currentPrice.changePct}
+            metrics={metrics}
+          />
         </div>
 
         <footer className="text-center text-xs text-muted-foreground py-4 border-t border-border">
