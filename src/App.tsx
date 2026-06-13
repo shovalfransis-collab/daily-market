@@ -154,6 +154,55 @@ export default function App() {
           <FearGreedMeter data={data?.fearGreed ?? null} loading={loading} />
         </div>
 
+        {/* Calculator CTA Banner */}
+        <div className="mb-6">
+          <button
+            onClick={() => setShowCalculator(true)}
+            className="w-full group relative overflow-hidden rounded-2xl text-left"
+            style={{ background: 'linear-gradient(135deg, #071a07 0%, #0a2410 40%, #071f10 70%, #050f05 100%)' }}
+          >
+            {/* Animated border glow */}
+            <span className="pointer-events-none absolute inset-0 rounded-2xl border border-transparent group-hover:border-green-400/40 transition-all duration-500" style={{ boxShadow: '0 0 0 1px rgba(34,197,94,0.15), inset 0 0 0 1px rgba(34,197,94,0.08)' }} />
+            {/* Shimmer sweep */}
+            <span className="pointer-events-none absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-[800ms] ease-in-out bg-gradient-to-r from-transparent via-white/[0.04] to-transparent" />
+            {/* Glow orbs */}
+            <span className="pointer-events-none absolute -top-8 left-1/4 h-28 w-28 rounded-full bg-green-500/20 blur-3xl group-hover:bg-green-500/35 transition-all duration-700" />
+            <span className="pointer-events-none absolute -bottom-6 right-1/4 h-20 w-20 rounded-full bg-amber-400/15 blur-2xl animate-pulse [animation-delay:0.5s]" />
+            <span className="pointer-events-none absolute top-2 right-8 h-16 w-16 rounded-full bg-emerald-400/10 blur-2xl animate-pulse [animation-delay:1.2s]" />
+
+            <div className="relative px-6 py-5 flex items-center gap-5">
+              {/* Icon block */}
+              <div className="relative shrink-0">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500/30 to-emerald-600/20 border border-green-500/30 group-hover:border-green-400/50 group-hover:from-green-500/40 transition-all duration-300 shadow-[0_0_20px_rgba(34,197,94,0.2)]">
+                  <TrendingUp size={26} className="text-green-400 group-hover:text-green-300 transition-colors drop-shadow-[0_0_8px_rgba(34,197,94,0.8)]" />
+                </div>
+                <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-50" />
+                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-green-500 shadow-[0_0_6px_rgba(34,197,94,1)]" />
+                </span>
+              </div>
+
+              {/* Text */}
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-400/90 mb-1">Free Tool · No Sign-up</p>
+                <p className="text-lg font-extrabold text-white leading-tight group-hover:text-green-50 transition-colors">
+                  The Younger The Richer Calculator
+                </p>
+                <p className="text-xs text-slate-400 mt-1 group-hover:text-slate-300 transition-colors">
+                  Enter your age, monthly savings &amp; expected return → see your exact wealth at retirement
+                </p>
+              </div>
+
+              {/* CTA button */}
+              <div className="shrink-0">
+                <div className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 px-5 py-2.5 text-sm font-extrabold text-white shadow-[0_0_24px_rgba(34,197,94,0.5)] group-hover:shadow-[0_0_40px_rgba(34,197,94,0.75)] group-hover:from-green-400 group-hover:to-emerald-400 transition-all duration-300">
+                  Try it free →
+                </div>
+              </div>
+            </div>
+          </button>
+        </div>
+
         {error && (
           <div className="mb-6 p-4 rounded-lg bg-[#1a0a0a] border border-down/30 text-down text-sm">
             {error}
@@ -227,37 +276,6 @@ export default function App() {
         {/* Watchlist */}
         <div className="mb-6">
           <Watchlist onSymbolClick={handleSymbolClick} />
-        </div>
-
-        {/* Calculator CTA Banner */}
-        <div className="mb-6">
-          <button
-            onClick={() => setShowCalculator(true)}
-            className="calculator-cta w-full group relative overflow-hidden rounded-2xl border border-amber-500/40 bg-gradient-to-r from-[#0d1f0d] via-[#0f2318] to-[#0d1a0d] px-6 py-4 text-left transition-all duration-300 hover:border-amber-400/70 hover:shadow-[0_0_40px_rgba(34,197,94,0.25)] hover:scale-[1.01]"
-          >
-            <span className="pointer-events-none absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/5 to-transparent" />
-            <span className="pointer-events-none absolute -top-6 right-16 h-20 w-20 rounded-full bg-up/20 blur-2xl animate-pulse" />
-            <span className="pointer-events-none absolute -bottom-4 right-32 h-14 w-14 rounded-full bg-amber-400/15 blur-xl animate-pulse [animation-delay:0.7s]" />
-            <div className="relative flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-up/20 border border-up/30 group-hover:bg-up/30 transition-colors">
-                  <TrendingUp size={20} className="text-up" />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-amber-400/80 mb-0.5">Free Tool</p>
-                  <p className="text-base font-bold text-slate-100 group-hover:text-white transition-colors">
-                    The Younger The Richer Calculator
-                  </p>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    See exactly how much wealth you'll build — start age, monthly input, annual return → real number
-                  </p>
-                </div>
-              </div>
-              <div className="shrink-0 flex items-center gap-2 rounded-xl bg-up px-4 py-2 text-sm font-bold text-white shadow-[0_0_20px_rgba(34,197,94,0.4)] group-hover:shadow-[0_0_30px_rgba(34,197,94,0.6)] transition-shadow">
-                Try it →
-              </div>
-            </div>
-          </button>
         </div>
 
         <footer className="text-center text-xs text-muted-foreground py-4 border-t border-border mt-4">

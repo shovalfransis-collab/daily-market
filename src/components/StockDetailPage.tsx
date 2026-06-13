@@ -347,8 +347,10 @@ export function StockDetailPage({ symbol, name, onBack }: Props) {
   const [showFullDesc, setShowFullDesc] = useState(false);
   const chartCache = useRef<Record<number, { points: ChartPoint[]; price: typeof currentPrice }>>({});
 
-  // Clear ALL cached data when symbol changes
+  // Clear ALL cached data when symbol changes + force scroll top
   useEffect(() => {
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
     chartCache.current = {};
     setChartData([]);
     setChartLoading(true);
