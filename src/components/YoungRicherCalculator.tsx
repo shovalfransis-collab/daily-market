@@ -4,12 +4,16 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
+import { CurrencyRate } from '../types';
 
 interface Props {
   onBack: () => void;
+  currencies?: CurrencyRate[];
 }
 
-const CURRENCIES = [
+type Currency = { code: string; symbol: string; name: string; rate: number };
+
+const BASE_CURRENCIES: Currency[] = [
   { code: 'USD', symbol: '$',   name: 'US Dollar',         rate: 1 },
   { code: 'EUR', symbol: '€',   name: 'Euro',              rate: 0.92 },
   { code: 'GBP', symbol: '£',   name: 'British Pound',     rate: 0.79 },
@@ -21,9 +25,20 @@ const CURRENCIES = [
   { code: 'HKD', symbol: 'HK$', name: 'Hong Kong Dollar',  rate: 7.82 },
   { code: 'SGD', symbol: 'S$',  name: 'Singapore Dollar',  rate: 1.34 },
   { code: 'ILS', symbol: '₪',   name: 'Israeli Shekel',    rate: 3.70 },
-] as const;
+];
 
-type Currency = typeof CURRENCIES[number];
+function buildLiveRates(currencies: CurrencyRate[]): Record<string, number> {
+  const map: Record<string, number> = {};
+  for (const c of currencies) {
+    const [base, quote] = c.pair.split('/');
+    if (quote === 'USD' && c.rate > 0) {
+      map[base] = 1 / c.rate;
+    } else if (base === 'USD' && c.rate > 0) {
+      map[quote] = c.rate;
+    }
+  }
+  return map;
+}
 
 function fmtMoney(n: number, sym: string): string {
   if (n >= 1_000_000_000) return `${sym}${(n / 1_000_000_000).toFixed(2)}B`;
@@ -118,7 +133,7 @@ function Stat({ label, value, sub, accent }: { label: string; value: string; sub
   );
 }
 
-function CurrencySelector({ currency, onChange }: { currency: Currency; onChange: (c: Currency) => void }) {
+function CurrencySelector({ currency, currencies, onChange }: { currency: Currency; currencies: Currency[]; onChange: (c: Currency) => void }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -135,7 +150,7 @@ function CurrencySelector({ currency, onChange }: { currency: Currency; onChange
       {open && (
         <div className="absolute right-0 top-full mt-1 z-50 bg-card border border-border rounded-xl shadow-xl
           min-w-[200px] overflow-hidden">
-          {CURRENCIES.map(c => (
+          {currencies.map(c => (
             <button
               key={c.code}
               onClick={() => { onChange(c); setOpen(false); }}
@@ -153,8 +168,20 @@ function CurrencySelector({ currency, onChange }: { currency: Currency; onChange
   );
 }
 
-export function YoungRicherCalculator({ onBack }: Props) {
-  const [currency, setCurrency] = useState<Currency>(CURRENCIES[0]);
+export function YoungRicherCalculator({ onBack, currencies: liveCurrencies }: Props) {
+  const CURRENCIES = useMemo(() => {
+    if (!liveCurrencies?.length) return BASE_CURRENCIES;
+    const liveRates = buildLiveRates(liveCurrencies);
+    return BASE_CURRENCIES.map(c => liveRates[c.code] !== undefined ? { ...c, rate: liveRates[c.code] } : c);
+  }, [liveCurrencies]);
+
+  const [currency, setCurrency] = useState<Currency>(BASE_CURRENCIES[0]);
+
+  useEffect(() => {
+    const updated = CURRENCIES.find(c => c.code === currency.code);
+    if (updated && updated.rate !== currency.rate) setCurrency(updated);
+  }, [CURRENCIES]);
+
   const [startAge, setStartAge] = useState(20);
   const [retireAge, setRetireAge] = useState(60);
   const [initialCapital, setInitialCapital] = useState(100_000);
@@ -236,7 +263,7 @@ export function YoungRicherCalculator({ onBack }: Props) {
               Compound interest — the 8th wonder of the world
             </p>
           </div>
-          <CurrencySelector currency={currency} onChange={handleCurrencyChange} />
+          <CurrencySelector currency={currency} currencies={CURRENCIES} onChange={handleCurrencyChange} />
         </header>
 
         {/* How it works */}

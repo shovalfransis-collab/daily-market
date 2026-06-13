@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RefreshCw, TrendingUp } from 'lucide-react';
 import { fetchNewsletter } from './lib/api';
+import { fetchBatch } from './lib/yahooFinance';
 import { isMarketOpen } from './lib/utils';
-import { MarketSummary } from './types';
+import { MarketSummary, EarningsReport } from './types';
 import { NewsletterSummaryCard } from './components/NewsletterSummary';
 import { MarketOverview } from './components/MarketOverview';
 import { TopMovers } from './components/TopMovers';
@@ -22,8 +23,15 @@ import { CryptoPanel } from './components/CryptoPanel';
 import { Watchlist } from './components/Watchlist';
 
 
+const WATCHLIST_KEY = 'md_watchlist';
+
+function loadWatchlistSymbols(): string[] {
+  try { return JSON.parse(localStorage.getItem(WATCHLIST_KEY) ?? '[]'); } catch { return []; }
+}
+
 export default function App() {
   const [data, setData] = useState<MarketSummary | null>(null);
+  const [mergedEarnings, setMergedEarnings] = useState<EarningsReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,18 +40,43 @@ export default function App() {
   const navigate = useNavigate();
   const prevMarketOpen = useRef(false);
 
+  const mergeWatchlistIntoEarnings = useCallback(async (earnings: EarningsReport[]) => {
+    const syms = loadWatchlistSymbols();
+    if (syms.length === 0) { setMergedEarnings(earnings); return; }
+    try {
+      const quotes = await fetchBatch(syms, false);
+      const earningsSymbols = new Set(earnings.map(e => e.symbol));
+      const enriched = earnings.map(e => {
+        const q = quotes.find(q => q.symbol === e.symbol);
+        return q ? { ...e, changePercent: q.changePercent, isWatchlist: true } : e;
+      });
+      const watchlistOnly = quotes
+        .filter(q => !earningsSymbols.has(q.symbol))
+        .map(q => ({
+          symbol: q.symbol,
+          name: q.name,
+          changePercent: q.changePercent,
+          isWatchlist: true,
+        } as EarningsReport));
+      setMergedEarnings([...enriched, ...watchlistOnly]);
+    } catch {
+      setMergedEarnings(earnings);
+    }
+  }, []);
+
   const load = useCallback(async (bust = false) => {
     try {
       setError(null);
       const result = await fetchNewsletter();
       setData(result);
+      await mergeWatchlistIntoEarnings(result.earnings);
     } catch (e: any) {
       setError(e?.message || 'Failed to load market data');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [mergeWatchlistIntoEarnings]);
 
   useEffect(() => {
     const html = document.documentElement;
@@ -65,6 +98,17 @@ export default function App() {
 
   useEffect(() => { load(); }, [load]);
 
+  const dataRef = useRef<MarketSummary | null>(null);
+  useEffect(() => { dataRef.current = data; }, [data]);
+
+  useEffect(() => {
+    const onWatchlistChanged = () => {
+      if (dataRef.current) mergeWatchlistIntoEarnings(dataRef.current.earnings);
+    };
+    window.addEventListener('watchlist-changed', onWatchlistChanged);
+    return () => window.removeEventListener('watchlist-changed', onWatchlistChanged);
+  }, [mergeWatchlistIntoEarnings]);
+
   const handleRefresh = async () => {
     setRefreshing(true);
     await load(true);
@@ -79,7 +123,7 @@ export default function App() {
       });
 
   if (showCalculator) {
-    return <YoungRicherCalculator onBack={() => setShowCalculator(false)} />;
+    return <YoungRicherCalculator onBack={() => setShowCalculator(false)} currencies={data?.currencies} />;
   }
 
   const handleSymbolClick = (symbol: string, _name: string) => navigate(`/stock/${encodeURIComponent(symbol)}`);
@@ -208,7 +252,7 @@ export default function App() {
 
         {/* Earnings */}
         <div className="mb-6">
-          <EarningsTable earnings={data?.earnings ?? []} loading={loading} />
+          <EarningsTable earnings={mergedEarnings} loading={loading} />
         </div>
 
         {/* Watchlist */}

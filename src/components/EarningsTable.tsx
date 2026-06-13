@@ -1,3 +1,4 @@
+import { Star } from 'lucide-react';
 import { EarningsReport } from '../types';
 
 interface Props {
@@ -34,7 +35,19 @@ function SurpriseBadge({ pct }: { pct?: number }) {
   );
 }
 
+function ChangePct({ pct }: { pct?: number }) {
+  if (pct === undefined || pct === null) return <span className="text-muted-foreground text-xs">—</span>;
+  const up = pct >= 0;
+  return (
+    <span className={`text-xs font-medium tabular-nums ${up ? 'text-up' : 'text-down'}`}>
+      {up ? '+' : ''}{pct.toFixed(2)}%
+    </span>
+  );
+}
+
 export function EarningsTable({ earnings, loading }: Props) {
+  const hasWatchlist = earnings.some(e => e.isWatchlist);
+
   return (
     <section>
       <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-3">
@@ -64,6 +77,7 @@ export function EarningsTable({ earnings, loading }: Props) {
                 <tr className="border-b border-border">
                   <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">Symbol</th>
                   <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">Company</th>
+                  <th className="text-right text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">Change</th>
                   <th className="text-right text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">EPS Act.</th>
                   <th className="text-right text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">EPS Est.</th>
                   <th className="text-right text-xs font-medium text-muted-foreground uppercase tracking-wide px-4 py-3">Rev Act.</th>
@@ -73,9 +87,18 @@ export function EarningsTable({ earnings, loading }: Props) {
               </thead>
               <tbody>
                 {earnings.map((e, idx) => (
-                  <tr key={e.symbol + idx} className="border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-3 font-medium text-slate-100">{e.symbol}</td>
+                  <tr
+                    key={e.symbol + idx}
+                    className={`border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors ${e.isWatchlist ? 'bg-amber-500/5' : ''}`}
+                  >
+                    <td className="px-4 py-3 font-medium text-slate-100">
+                      <span className="flex items-center gap-1.5">
+                        {e.isWatchlist && <Star size={10} className="text-amber-400 shrink-0" fill="currentColor" />}
+                        {e.symbol}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 text-slate-400 max-w-[180px] truncate">{e.name}</td>
+                    <td className="px-4 py-3 text-right"><ChangePct pct={e.changePercent} /></td>
                     <td className="px-4 py-3 text-right text-slate-300">{formatEps(e.epsActual)}</td>
                     <td className="px-4 py-3 text-right text-slate-400">{formatEps(e.epsEstimate)}</td>
                     <td className="px-4 py-3 text-right text-slate-300">{formatRev(e.revActual)}</td>
@@ -89,6 +112,12 @@ export function EarningsTable({ earnings, loading }: Props) {
                 ))}
               </tbody>
             </table>
+            {hasWatchlist && (
+              <div className="px-4 py-2 border-t border-border flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Star size={10} className="text-amber-400" fill="currentColor" />
+                Watchlist stock
+              </div>
+            )}
           </div>
         )}
       </div>

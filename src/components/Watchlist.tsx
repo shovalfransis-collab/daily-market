@@ -22,6 +22,7 @@ function loadSymbols(): string[] {
 function saveSymbols(syms: string[]) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(syms));
+    window.dispatchEvent(new CustomEvent('watchlist-changed'));
   } catch {}
 }
 

@@ -40,6 +40,8 @@ export interface EarningsReport {
   revEstimate?: number;
   surprisePercent?: number;
   reportTime?: string;
+  changePercent?: number;
+  isWatchlist?: boolean;
 }
 
 export interface NewsletterSummary {
