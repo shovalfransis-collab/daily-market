@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Search, X, TrendingUp, Clock, ChevronRight } from 'lucide-react';
 import { SearchResult } from '../types';
 import { searchLocal, POPULAR } from '../data/stockDatabase';
@@ -137,12 +137,10 @@ export function GlobalSearch({ onNavigate }: Props) {
     return () => clearTimeout(apiTimer.current);
   }, [query]);
 
-  // Merge results: local first, then API results not already in local
-  const localSymbols = new Set(localResults.map(r => r.symbol));
-  const merged: SearchResult[] = [
-    ...localResults,
-    ...apiResults.filter(r => !localSymbols.has(r.symbol)),
-  ].slice(0, 12);
+  const merged = useMemo<SearchResult[]>(() => {
+    const localSymbols = new Set(localResults.map(r => r.symbol));
+    return [...localResults, ...apiResults.filter(r => !localSymbols.has(r.symbol))].slice(0, 12);
+  }, [localResults, apiResults]);
 
   const displayList: SearchResult[] = query.trim() ? merged : [];
   const showRecent   = !query.trim() && recent.length > 0;

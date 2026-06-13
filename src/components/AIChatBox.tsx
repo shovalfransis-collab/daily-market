@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Send, Bot, User, Loader2 } from 'lucide-react';
 import { FinancialMetrics } from '../types';
 
@@ -82,6 +82,11 @@ export function AIChatBox({ symbol, name, price, changePct, metrics }: Props) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [messages, loading]);
 
+  const systemPrompt = useMemo(
+    () => buildSystemPrompt(symbol, name, price, changePct, metrics),
+    [symbol, name, price, changePct, metrics]
+  );
+
   const send = async (text?: string) => {
     const content = (text ?? input).trim();
     if (!content || loading) return;
@@ -94,7 +99,7 @@ export function AIChatBox({ symbol, name, price, changePct, metrics }: Props) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          system: buildSystemPrompt(symbol, name, price, changePct, metrics),
+          system: systemPrompt,
           messages: next.map(m => ({ role: m.role, content: m.content })),
         }),
       });

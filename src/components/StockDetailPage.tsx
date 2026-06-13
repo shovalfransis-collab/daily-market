@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   ArrowLeft, TrendingUp, TrendingDown, Minus,
   ExternalLink, Users, Globe, Building2,
@@ -412,38 +412,54 @@ export function StockDetailPage({ symbol, name, onBack }: Props) {
     return () => { cancelled = true; };
   }, [symbol]);
 
-  const positive   = currentPrice.changePct >= 0;
-  const gradColor  = positive ? 'var(--up)' : 'var(--down)';
-  const gradId     = `cg_${symbol.replace(/[^a-z0-9]/gi, '')}`;
-  const rec        = RECOMMENDATIONS[symbol] ?? DEFAULT_REC;
-  const staticDesc = DESCRIPTIONS[symbol];
-  const liveDesc   = metrics?.description;
-  const description = liveDesc || staticDesc;
+  const positive  = currentPrice.changePct >= 0;
+  const gradColor = positive ? 'var(--up)' : 'var(--down)';
+  const gradId    = useMemo(() => `cg_${symbol.replace(/[^a-z0-9]/gi, '')}`, [symbol]);
+  const rec       = RECOMMENDATIONS[symbol] ?? DEFAULT_REC;
+
   const displayName = metrics?.longName || metrics?.shortName || name || symbol.replace('^', '');
-  const aiScores       = metrics ? computeAIScores(metrics, currentPrice.price) : null;
-  const liveAnalysis   = metrics ? generateAnalysis(metrics, currentPrice.price, displayName) : null;
-  const analysis       = liveAnalysis ?? (!metricsLoading ? generateFromRec(rec, displayName, symbol) : null);
+  const description = metrics?.description || DESCRIPTIONS[symbol];
 
-  const high = chartData.length ? Math.max(...chartData.map(p => p.high || p.close)) : 0;
-  const low  = chartData.length ? Math.min(...chartData.filter(p => p.low > 0).map(p => p.low)) : 0;
-  const open = chartData[0]?.open ?? 0;
-  const yMin = chartData.length ? Math.min(...chartData.map(p => p.close)) * 0.998 : 'auto';
-  const yMax = chartData.length ? Math.max(...chartData.map(p => p.close)) * 1.002 : 'auto';
-  const step = Math.max(1, Math.floor((chartData.length - 1) / 5));
-  const xTicks = chartData.length
-    ? [...Array(6)].map((_, i) => chartData[Math.min(i * step, chartData.length - 1)]?.t).filter(Boolean)
-    : [];
+  const aiScores = useMemo(
+    () => (metrics ? computeAIScores(metrics, currentPrice.price) : null),
+    [metrics, currentPrice.price]
+  );
 
-  const totalAnalysts = (metrics?.analystStrongBuy ?? 0) + (metrics?.analystBuy ?? 0) +
-    (metrics?.analystHold ?? 0) + (metrics?.analystSell ?? 0) + (metrics?.analystStrongSell ?? 0);
-  const bullPct = totalAnalysts > 0
-    ? Math.round(((metrics?.analystStrongBuy ?? 0) + (metrics?.analystBuy ?? 0)) / totalAnalysts * 100)
-    : 0;
-  const consensus = consensusFromKey(metrics?.recommendationKey);
+  const analysis = useMemo(() => {
+    if (!metrics) return metricsLoading ? null : generateFromRec(rec, displayName, symbol);
+    const live = generateAnalysis(metrics, currentPrice.price, displayName);
+    return live ?? generateFromRec(rec, displayName, symbol);
+  }, [metrics, metricsLoading, currentPrice.price, displayName, symbol, rec]);
 
-  // Annual revenue bar chart data
-  const revenueData = metrics?.annualRevenue?.slice(-4) ?? [];
-  const incomeData  = metrics?.annualNetIncome?.slice(-4) ?? [];
+  const { high, low, open, yMin, yMax, xTicks } = useMemo(() => {
+    if (!chartData.length) return { high: 0, low: 0, open: 0, yMin: 'auto' as const, yMax: 'auto' as const, xTicks: [] };
+    const closes = chartData.map(p => p.close);
+    const lows   = chartData.filter(p => p.low > 0).map(p => p.low);
+    const minC   = Math.min(...closes);
+    const maxC   = Math.max(...closes);
+    const step   = Math.max(1, Math.floor((chartData.length - 1) / 5));
+    return {
+      high:   Math.max(...chartData.map(p => p.high || p.close)),
+      low:    lows.length ? Math.min(...lows) : 0,
+      open:   chartData[0].open ?? 0,
+      yMin:   minC * 0.998,
+      yMax:   maxC * 1.002,
+      xTicks: [...Array(6)].map((_, i) => chartData[Math.min(i * step, chartData.length - 1)]?.t).filter(Boolean),
+    };
+  }, [chartData]);
+
+  const { totalAnalysts, bullPct, consensus } = useMemo(() => {
+    const total = (metrics?.analystStrongBuy ?? 0) + (metrics?.analystBuy ?? 0) +
+      (metrics?.analystHold ?? 0) + (metrics?.analystSell ?? 0) + (metrics?.analystStrongSell ?? 0);
+    return {
+      totalAnalysts: total,
+      bullPct: total > 0 ? Math.round(((metrics?.analystStrongBuy ?? 0) + (metrics?.analystBuy ?? 0)) / total * 100) : 0,
+      consensus: consensusFromKey(metrics?.recommendationKey),
+    };
+  }, [metrics]);
+
+  const revenueData = useMemo(() => metrics?.annualRevenue?.slice(-4) ?? [], [metrics]);
+  const incomeData  = useMemo(() => metrics?.annualNetIncome?.slice(-4) ?? [], [metrics]);
 
   return (
     <div className="min-h-screen bg-background text-slate-200">

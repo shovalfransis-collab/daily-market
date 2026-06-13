@@ -40,9 +40,14 @@ export default function App() {
   const navigate = useNavigate();
   const prevMarketOpen = useRef(false);
 
-  const mergeWatchlistIntoEarnings = useCallback(async (earnings: EarningsReport[]) => {
+  const lastWatchlistRef = useRef<string>('');
+
+  const mergeWatchlistIntoEarnings = useCallback(async (earnings: EarningsReport[], force = false) => {
     const syms = loadWatchlistSymbols();
+    const symKey = syms.join(',');
     if (syms.length === 0) { setMergedEarnings(earnings); return; }
+    if (!force && symKey === lastWatchlistRef.current && earnings === dataRef.current?.earnings) return;
+    lastWatchlistRef.current = symKey;
     try {
       const quotes = await fetchBatch(syms, false);
       const earningsSymbols = new Set(earnings.map(e => e.symbol));
@@ -52,12 +57,7 @@ export default function App() {
       });
       const watchlistOnly = quotes
         .filter(q => !earningsSymbols.has(q.symbol))
-        .map(q => ({
-          symbol: q.symbol,
-          name: q.name,
-          changePercent: q.changePercent,
-          isWatchlist: true,
-        } as EarningsReport));
+        .map(q => ({ symbol: q.symbol, name: q.name, changePercent: q.changePercent, isWatchlist: true } as EarningsReport));
       setMergedEarnings([...enriched, ...watchlistOnly]);
     } catch {
       setMergedEarnings(earnings);
@@ -103,7 +103,7 @@ export default function App() {
 
   useEffect(() => {
     const onWatchlistChanged = () => {
-      if (dataRef.current) mergeWatchlistIntoEarnings(dataRef.current.earnings);
+      if (dataRef.current) mergeWatchlistIntoEarnings(dataRef.current.earnings, true);
     };
     window.addEventListener('watchlist-changed', onWatchlistChanged);
     return () => window.removeEventListener('watchlist-changed', onWatchlistChanged);
@@ -114,13 +114,9 @@ export default function App() {
     await load(true);
   };
 
-  const dateStr = data
-    ? new Date(data.date).toLocaleDateString('en-US', {
-        weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
-      })
-    : new Date().toLocaleDateString('en-US', {
-        weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
-      });
+  const dateStr = new Date(data?.date ?? Date.now()).toLocaleDateString('en-US', {
+    weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
+  });
 
   if (showCalculator) {
     return <YoungRicherCalculator onBack={() => setShowCalculator(false)} currencies={data?.currencies} />;

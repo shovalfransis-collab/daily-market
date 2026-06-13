@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { LineChart, Line, ResponsiveContainer, Tooltip } from 'recharts';
 import { StockQuote, PricePoint } from '../types';
 import { formatPrice, formatPercent, formatChange, formatVolume, colorClass } from '../lib/utils';
@@ -157,10 +157,15 @@ export function MarketOverview({ indices, loading, onSymbolClick }: Props) {
   const [historyLoading, setHistoryLoading] = useState(false);
   const initializedRef = useRef(false);
 
-  const mainIndices = indices.filter(i => DISPLAY_INDICES.includes(i.symbol));
-  const vix = indices.find(i => i.symbol === '^VIX');
-  const tnx = indices.find(i => i.symbol === '^TNX');
-  const irx = indices.find(i => i.symbol === '^IRX');
+  const { mainIndices, vix, tnx, irx } = useMemo(() => {
+    const map = new Map(indices.map(i => [i.symbol, i]));
+    return {
+      mainIndices: DISPLAY_INDICES.map(s => map.get(s)).filter(Boolean) as typeof indices,
+      vix: map.get('^VIX'),
+      tnx: map.get('^TNX'),
+      irx: map.get('^IRX'),
+    };
+  }, [indices]);
 
   // seed history from props on first load
   useEffect(() => {

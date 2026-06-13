@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, memo } from 'react';
 import { TrendingUp, TrendingDown, Activity, Bell } from 'lucide-react';
 import { StockQuote } from '../types';
 import { formatPrice, formatPercent, isMarketOpen } from '../lib/utils';
@@ -92,12 +92,12 @@ function Column({
   loading: boolean; usePrePost?: boolean; isPost?: boolean;
   onSymbolClick?: (symbol: string, name: string) => void;
 }) {
-  const maxPct = Math.max(...quotes.map(q => {
+  const maxPct = useMemo(() => Math.max(...quotes.map(q => {
     const pct = usePrePost
       ? (isPost ? Math.abs(q.postMarketChangePercent ?? 0) : Math.abs(q.preMarketChangePercent ?? 0))
       : Math.abs(q.changePercent);
     return pct;
-  }), 1);
+  }), 1), [quotes, usePrePost, isPost]);
 
   return (
     <div className="rounded-xl border border-border bg-card p-4 flex flex-col">
@@ -140,8 +140,8 @@ export function TopMovers({ gainers, losers, preMovers, postMovers, loading, onS
   const marketClosed = !isMarketOpen();
   const noData = !loading && gainers.length === 0 && losers.length === 0;
 
-  const filteredGainers = filterByCap(gainers, capFilter);
-  const filteredLosers  = filterByCap(losers,  capFilter);
+  const filteredGainers = useMemo(() => filterByCap(gainers, capFilter), [gainers, capFilter]);
+  const filteredLosers  = useMemo(() => filterByCap(losers,  capFilter), [losers,  capFilter]);
 
   return (
     <section>

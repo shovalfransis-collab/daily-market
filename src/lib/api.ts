@@ -50,8 +50,8 @@ export async function fetchNewsletter(): Promise<MarketSummary> {
   ]);
 
   const sectors = buildSectors(sectorQuotes);
-  const sectorsUp = sectors.filter(s => s.changePercent > 0).length;
-  const sectorsDown = sectors.filter(s => s.changePercent <= 0).length;
+  let sectorsUp = 0, sectorsDown = 0;
+  for (const s of sectors) s.changePercent > 0 ? sectorsUp++ : sectorsDown++;
 
   const breadth: MarketBreadth = {
     advancers: movers.gainersTotal,
@@ -64,14 +64,17 @@ export async function fetchNewsletter(): Promise<MarketSummary> {
 
   const allMovers = dedupeBySymbol([...movers.gainers, ...movers.losers, ...movers.active]);
 
+  const sortByAbsPct = (key: 'preMarketChangePercent' | 'postMarketChangePercent') =>
+    (a: StockQuote, b: StockQuote) => Math.abs(b[key] ?? 0) - Math.abs(a[key] ?? 0);
+
   const preMovers = allMovers
     .filter(q => Math.abs(q.preMarketChangePercent ?? 0) > 0)
-    .sort((a, b) => Math.abs(b.preMarketChangePercent ?? 0) - Math.abs(a.preMarketChangePercent ?? 0))
+    .sort(sortByAbsPct('preMarketChangePercent'))
     .slice(0, 10);
 
   const postMovers = allMovers
     .filter(q => Math.abs(q.postMarketChangePercent ?? 0) > 0)
-    .sort((a, b) => Math.abs(b.postMarketChangePercent ?? 0) - Math.abs(a.postMarketChangePercent ?? 0))
+    .sort(sortByAbsPct('postMarketChangePercent'))
     .slice(0, 10);
 
   const data = {
@@ -96,4 +99,3 @@ export async function fetchNewsletter(): Promise<MarketSummary> {
   return { ...data, summary: generateSummary(data) };
 }
 
-export { fetchNewsletter as refreshNewsletter };
