@@ -16,10 +16,10 @@ const COMMODITY_NAMES: Record<string, string> = {
 const INDEX_NAMES: Record<string, string> = {
   '^GSPC': 'S&P 500', '^IXIC': 'NASDAQ', '^DJI': 'Dow Jones',
   '^RUT': 'Russell 2000', '^VIX': 'VIX Fear Index', '^TNX': '10Y Treasury',
-  'DX-Y.NYB': 'US Dollar Index',
+  '^IRX': '3M T-Bill', 'DX-Y.NYB': 'US Dollar Index',
 };
 
-export const INDICES = ['^GSPC', '^IXIC', '^DJI', '^RUT', '^VIX', '^TNX', 'DX-Y.NYB'];
+export const INDICES = ['^GSPC', '^IXIC', '^DJI', '^RUT', '^VIX', '^TNX', '^IRX', 'DX-Y.NYB'];
 
 export const CRYPTO_SYMBOLS = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'BNB-USD'];
 const CRYPTO_NAMES: Record<string, string> = {
@@ -110,6 +110,15 @@ export async function fetchSymbol(sym: string, includeHistory = false): Promise<
     return quote;
   } catch {
     return null;
+  }
+}
+
+export async function fetchSymbolHistory(sym: string, range: string, interval: string): Promise<PricePoint[]> {
+  try {
+    const data = await fetchChartRange(sym, range, interval);
+    return parseHistory(data, 999);
+  } catch {
+    return [];
   }
 }
 
